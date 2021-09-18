@@ -21,13 +21,14 @@ func Unpack(input string) (string, error) {
 
 	for i, r := range input {
 		repeat := 1
-		if unicode.IsDigit(r) {
+		isDigit := unicode.IsDigit(r)
+		if isDigit {
 			repeat = encodeDigitRune(r)
 		}
 		if unicode.IsLetter(last) {
 			b.WriteString(strings.Repeat(encodeLetterRune(last), repeat))
 		}
-		if length-1 == i {
+		if !isDigit && length-1 == i {
 			b.WriteString(encodeLetterRune(r))
 		}
 		last = r
@@ -60,7 +61,7 @@ func encodeLetterRune(r rune) string {
 }
 
 func encodeRune(r rune) string {
-	buf := make([]byte, 1)
+	buf := make([]byte, utf8.RuneLen(r))
 	_ = utf8.EncodeRune(buf, r)
 	return string(buf)
 }
