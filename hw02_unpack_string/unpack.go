@@ -15,6 +15,7 @@ func Unpack(input string) (string, error) {
 		return "", err
 	}
 
+	length := len(input)
 	var b strings.Builder
 	var last rune
 
@@ -26,7 +27,7 @@ func Unpack(input string) (string, error) {
 		if unicode.IsLetter(last) {
 			b.WriteString(strings.Repeat(encodeLetterRune(last), repeat))
 		}
-		if len(input)-1 == i {
+		if length-1 == i {
 			b.WriteString(encodeLetterRune(r))
 		}
 		last = r
@@ -41,7 +42,7 @@ func validate(input string) error {
 		if !unicode.IsDigit(r) && !unicode.IsLetter(r) {
 			return ErrInvalidString
 		}
-		if unicode.IsDigit(r) && (last == 0 || unicode.IsDigit(last)) {
+		if unicode.IsDigit(r) && !unicode.IsLetter(last) {
 			return ErrInvalidString
 		}
 		last = r
@@ -61,6 +62,5 @@ func encodeLetterRune(r rune) string {
 func encodeRune(r rune) string {
 	buf := make([]byte, 1)
 	_ = utf8.EncodeRune(buf, r)
-
 	return string(buf)
 }
