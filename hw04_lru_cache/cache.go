@@ -31,10 +31,11 @@ func (l *lruCache) Set(key Key, value interface{}) bool {
 		i.Value.(*cacheItem).value = value
 		return true
 	}
-	if l.capacity <= l.queue.Len() {
+
+	l.items[key] = l.queue.PushFront(&cacheItem{key, value})
+	if l.capacity < l.queue.Len() {
 		l.Clear()
 	}
-	l.items[key] = l.queue.PushFront(&cacheItem{key, value})
 	return false
 }
 
