@@ -6,7 +6,7 @@ import (
 )
 
 func Top10(input string) []string {
-	counter := make(map[string]int, 0)
+	counter := make(map[string]int)
 	words := make([]string, 0)
 
 	for _, w := range strings.Fields(input) {
