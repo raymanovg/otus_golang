@@ -50,9 +50,6 @@ func (l *lruCache) Get(key Key) (interface{}, bool) {
 }
 
 func (l *lruCache) Clear() {
-	//l.Lock()
-	//defer l.Unlock()
-
 	if i := l.queue.Back(); i != nil {
 		l.queue.Remove(i)
 		delete(l.items, i.Value.(*cacheItem).key)
