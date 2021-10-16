@@ -9,7 +9,33 @@ import (
 // Change to true if needed.
 var taskWithAsteriskIsCompleted = false
 
-var text = `Как видите, он  спускается  по  лестнице  вслед  за  своим
+func TestTop10(t *testing.T) {
+	t.Run("no words in empty string", func(t *testing.T) {
+		require.Len(t, Top10(""), 0)
+	})
+
+	t.Run("word is letters or symbols divided by whitespace", func(t *testing.T) {
+		text := "aa bb cc - , . !"
+		require.Equal(t, []string{"!", ",", "-", ".", "aa", "bb", "cc"}, Top10(text))
+	})
+
+	t.Run("lexicographically sort", func(t *testing.T) {
+		text := "cc cc bb bb aa"
+		require.Equal(t, []string{"bb", "cc", "aa"}, Top10(text))
+	})
+
+	t.Run("difference words", func(t *testing.T) {
+		text := "Нога нога ногу ноги"
+		require.Equal(t, []string{"Нога", "нога", "ноги", "ногу"}, Top10(text))
+	})
+
+	t.Run("words with symbols", func(t *testing.T) {
+		text := "aa- -bb aa-bb ,aa bb, aa,bb"
+		require.Equal(t, []string{",aa", "-bb", "aa,bb", "aa-", "aa-bb", "bb,"}, Top10(text))
+	})
+
+	t.Run("positive test", func(t *testing.T) {
+		text := `Как видите, он  спускается  по  лестнице  вслед  за  своим
 	другом   Кристофером   Робином,   головой   вниз,  пересчитывая
 	ступеньки собственным затылком:  бум-бум-бум.  Другого  способа
 	сходить  с  лестницы  он  пока  не  знает.  Иногда ему, правда,
@@ -43,12 +69,6 @@ var text = `Как видите, он  спускается  по  лестни�
 	посидеть у огня и послушать какую-нибудь интересную сказку.
 		В этот вечер...`
 
-func TestTop10(t *testing.T) {
-	t.Run("no words in empty string", func(t *testing.T) {
-		require.Len(t, Top10(""), 0)
-	})
-
-	t.Run("positive test", func(t *testing.T) {
 		if taskWithAsteriskIsCompleted {
 			expected := []string{
 				"а",         // 8
