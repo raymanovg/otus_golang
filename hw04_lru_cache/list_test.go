@@ -23,8 +23,15 @@ func TestList(t *testing.T) {
 		l.PushBack(30)  // [10, 20, 30]
 		require.Equal(t, 3, l.Len())
 
+		// deleting middle element of the list
 		middle := l.Front().Next // 20
 		l.Remove(middle)         // [10, 30]
+		front := l.Front()
+		require.Equal(t, 10, front.Value)
+		require.Nil(t, front.Prev)
+		require.NotNil(t, front.Next)
+		require.Equal(t, 30, front.Next.Value)
+
 		require.Equal(t, 2, l.Len())
 
 		for i, v := range [...]int{40, 50, 60, 70, 80} {
@@ -47,5 +54,20 @@ func TestList(t *testing.T) {
 			elems = append(elems, i.Value.(int))
 		}
 		require.Equal(t, []int{70, 80, 60, 40, 10, 30, 50}, elems)
+
+		// deleting front and back element from list
+		front = l.Front()
+		l.Remove(front)
+		require.Equal(t, 6, l.Len())
+		front = l.Front()
+		require.Nil(t, front.Prev)
+		require.NotNil(t, front.Next)
+
+		back := l.Back()
+		l.Remove(back)
+		require.Equal(t, 5, l.Len())
+		back = l.Back()
+		require.Nil(t, back.Next)
+		require.NotNil(t, back.Prev)
 	})
 }
