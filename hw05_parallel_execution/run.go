@@ -10,75 +10,76 @@ var ErrErrorsLimitExceeded = errors.New("errors limit exceeded")
 type Task func() error
 
 func Run(tasks []Task, n, m int) error {
-	tasksCh := makeTasksChanel(tasks)
-	errCh := make(chan error, n)
-	interruptCh, errCountChan := observe(errCh, m)
+	results := make(chan error)
+	errCount, done := observe(results, m)
+	taskStream := generator(tasks, done)
 
 	wg := sync.WaitGroup{}
 	wg.Add(n)
 
 	for i := 0; i < n; i++ {
 		go func() {
-			worker(tasksCh, errCh, interruptCh)
+			worker(taskStream, results, done)
 			wg.Done()
 		}()
 	}
 
 	wg.Wait()
 
-	close(errCh)
+	close(results)
 
-	errCount := <-errCountChan
-	if m != 0 && errCount >= m {
+	c := <-errCount
+	if m != 0 && c >= m {
 		return ErrErrorsLimitExceeded
 	}
 	return nil
 }
 
-func worker(tasks <-chan Task, errors chan<- error, interrupt <-chan struct{}) {
-	for {
+func worker(tasks <-chan Task, results chan<- error, done <-chan struct{}) {
+	for task := range tasks {
 		select {
-		case <-interrupt:
+		case <-done:
 			return
-		default:
-		}
-		select {
-		case task, ok := <-tasks:
-			if !ok {
-				return
-			}
-			errors <- task()
-		default:
+		case results <- task():
 		}
 	}
 }
 
-func observe(errCh <-chan error, m int) (<-chan struct{}, <-chan int) {
-	interruptCh := make(chan struct{})
-	errCountCh := make(chan int, 1)
+func observe(results <-chan error, m int) (<-chan int, <-chan struct{}) {
+	done := make(chan struct{})
+	errCount := make(chan int, 1)
+
 	go func() {
-		var count int
-		for err := range errCh {
+		defer close(done)
+		defer close(errCount)
+
+		var c int
+		for err := range results {
 			if err != nil {
-				count++
+				c++
 			}
-			if count == m && m != 0 {
-				errCountCh <- count
+			if c == m && m != 0 {
+				errCount <- c
 				break
 			}
 		}
-		close(interruptCh)
-		close(errCountCh)
 	}()
 
-	return interruptCh, errCountCh
+	return errCount, done
 }
 
-func makeTasksChanel(tasks []Task) <-chan Task {
-	tasksCh := make(chan Task, len(tasks))
-	for _, task := range tasks {
-		tasksCh <- task
-	}
-	close(tasksCh)
+func generator(tasks []Task, done <-chan struct{}) <-chan Task {
+	tasksCh := make(chan Task)
+	go func() {
+		defer close(tasksCh)
+		for _, task := range tasks {
+			select {
+			case <-done:
+				return
+			case tasksCh <- task:
+			}
+		}
+	}()
+
 	return tasksCh
 }
