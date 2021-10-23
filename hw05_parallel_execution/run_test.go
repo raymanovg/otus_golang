@@ -3,8 +3,6 @@ package hw05parallelexecution
 import (
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/goleak"
 	"math/rand"
 	"runtime"
 	"strconv"
@@ -13,6 +11,9 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 func TestRun(t *testing.T) {
