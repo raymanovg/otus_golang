@@ -29,7 +29,7 @@ func Run(tasks []Task, n, m int) error {
 	close(results)
 
 	c := <-errCount
-	if m != 0 && c >= m {
+	if m >= 1 && c >= m {
 		return ErrErrorsLimitExceeded
 	}
 	return nil
