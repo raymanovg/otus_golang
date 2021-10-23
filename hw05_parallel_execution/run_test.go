@@ -79,7 +79,7 @@ func TestRun(t *testing.T) {
 		for i := 0; i < tasksCount; i++ {
 			tasks = append(tasks, func() error {
 				atomic.AddInt32(&runTasksCount, 1)
-				id, _ := gorutineId()
+				id, _ := gorutineID()
 				mu.Lock()
 				runGoList[id] = struct{}{}
 				mu.Unlock()
@@ -149,7 +149,7 @@ func TestRun(t *testing.T) {
 	})
 }
 
-func gorutineId() (int64, error) {
+func gorutineID() (int64, error) {
 	var buf [64]byte
 	n := runtime.Stack(buf[:], false)
 	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
