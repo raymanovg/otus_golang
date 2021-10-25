@@ -1,13 +1,14 @@
 package hw06pipelineexecution
 
 import (
-	"github.com/stretchr/testify/require"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 const (
