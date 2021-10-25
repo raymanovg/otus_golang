@@ -19,6 +19,14 @@ import (
 func TestRun(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
+	goID := func() int64 {
+		var buf [64]byte
+		n := runtime.Stack(buf[:], false)
+		idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+		id, _ := strconv.ParseInt(idField, 10, 64)
+		return id
+	}
+
 	t.Run("if were errors in first M tasks, than finished not more N+M tasks", func(t *testing.T) {
 		tasksCount := 50
 		tasks := make([]Task, 0, tasksCount)
@@ -80,9 +88,8 @@ func TestRun(t *testing.T) {
 		for i := 0; i < tasksCount; i++ {
 			tasks = append(tasks, func() error {
 				atomic.AddInt32(&runTasksCount, 1)
-				id, _ := gorutineID()
 				mu.Lock()
-				runGoList[id] = struct{}{}
+				runGoList[goID()] = struct{}{}
 				mu.Unlock()
 				return nil
 			})
@@ -102,26 +109,16 @@ func TestRun(t *testing.T) {
 			maxErrCount int
 			err         error
 		}{
-			{
-				"zero max errors count",
-				0,
-				nil,
-			},
-			{
-				"-1 max errors count",
-				-1,
-				nil,
-			},
-			{
-				"-10 max errors count",
-				-10,
-				nil,
-			},
+			{"zero max errors count", 0, nil},
+			{"-1 max errors count", -1, nil},
+			{"-10 max errors count", -10, nil},
 		}
 
 		for _, c := range cases {
 			t.Run(c.name, func(t *testing.T) {
 				tasksCount := 10
+				workersCount := 5
+
 				errorTasksCount := rand.Intn(tasksCount)
 
 				tasks := make([]Task, 0, tasksCount)
@@ -142,17 +139,8 @@ func TestRun(t *testing.T) {
 					tasks[i], tasks[j] = tasks[j], tasks[i]
 				})
 
-				workersCount := 5
-
 				require.Equal(t, Run(tasks, workersCount, c.maxErrCount), c.err)
 			})
 		}
 	})
-}
-
-func gorutineID() (int64, error) {
-	var buf [64]byte
-	n := runtime.Stack(buf[:], false)
-	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
-	return strconv.ParseInt(idField, 10, 64)
 }
