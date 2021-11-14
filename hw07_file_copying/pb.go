@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 )
 
 type ProgressBar struct {
@@ -58,14 +57,17 @@ func (pb *ProgressBar) getPercent() int {
 	return int(float32(pb.current) / float32(pb.total) * 100)
 }
 
+func (pb *ProgressBar) String() string {
+	return fmt.Sprintf(pb.pattern, pb.rate, pb.percent, pb.total, pb.current)
+}
+
 func (pb *ProgressBar) render() {
 	prev := pb.percent
 	pb.percent = pb.getPercent()
 	if pb.percent != prev && pb.percent%2 == 0 {
 		pb.rate = strings.Repeat(pb.graph, pb.percent)
 	}
-	time.Sleep(time.Millisecond * 100)
-	fmt.Printf(pb.pattern, pb.rate, pb.percent, pb.total, pb.current)
+	fmt.Print(pb.String())
 }
 
 func (pb *ProgressBar) NewProgressBarWriter(writer io.Writer) *ProgressBarWriter {
