@@ -51,15 +51,17 @@ func Copy(srcFilePath, dstFilePath string, offset, limit int64) error {
 		return fmt.Errorf("unable to set file offset: %v", err)
 	}
 
-	if limit == 0 || size < limit {
-		limit = size - offset
+	total := size - offset
+	if limit == 0 || limit > total {
+		limit = total
+	} else {
+		total = limit
 	}
 
 	if WithProgressBar {
-		// TODO pb works incorrect if limit great than limit
-		return pbCopyN(dst, io.LimitReader(src, limit), limit)
+		return pbCopyN(dst, io.LimitReader(src, limit), total)
 	} else {
-		return copyN(dst, io.LimitReader(src, limit), limit)
+		return copyN(dst, io.LimitReader(src, limit), total)
 	}
 }
 
