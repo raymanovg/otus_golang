@@ -27,19 +27,16 @@ func NewProgressBar(total int64) *ProgressBar {
 	}
 }
 
-func (pb *ProgressBar) SetOutput(out io.Writer) *ProgressBar {
+func (pb *ProgressBar) SetOutput(out io.Writer) {
 	pb.output = out
-	return pb
 }
 
-func (pb *ProgressBar) SetTotal(t int64) *ProgressBar {
+func (pb *ProgressBar) SetTotal(t int64) {
 	pb.total = t
-	return pb
 }
 
-func (pb *ProgressBar) SetCurrent(c int64) *ProgressBar {
+func (pb *ProgressBar) SetCurrent(c int64) {
 	pb.current = c
-	return pb
 }
 
 func (pb *ProgressBar) Start() {

@@ -25,13 +25,13 @@ func Copy(srcFilePath, dstFilePath string, offset, limit int64) error {
 		if !os.IsPermission(err) {
 			return ErrSrcFileIsNotPermitted
 		}
-		return fmt.Errorf("unknown error: %v", err)
+		return fmt.Errorf("unknown error: %w", err)
 	}
 	defer src.Close()
 
 	info, err := src.Stat()
 	if err != nil {
-		return fmt.Errorf("unable to get file info: %v", err)
+		return fmt.Errorf("unable to get file info: %w", err)
 	}
 	size := info.Size()
 	if size == 0 {
@@ -43,12 +43,12 @@ func Copy(srcFilePath, dstFilePath string, offset, limit int64) error {
 
 	dst, err := os.Create(dstFilePath)
 	if err != nil {
-		return fmt.Errorf("unable to create dst file: %v", err)
+		return fmt.Errorf("unable to create dst file: %w", err)
 	}
 	defer dst.Close()
 
 	if _, err = src.Seek(offset, io.SeekStart); err != nil {
-		return fmt.Errorf("unable to set file offset: %v", err)
+		return fmt.Errorf("unable to set file offset: %w", err)
 	}
 
 	total := size - offset
@@ -60,9 +60,9 @@ func Copy(srcFilePath, dstFilePath string, offset, limit int64) error {
 
 	if WithProgressBar {
 		return pbCopyN(dst, io.LimitReader(src, limit), total)
-	} else {
-		return copyN(dst, io.LimitReader(src, limit), total)
 	}
+
+	return copyN(dst, io.LimitReader(src, limit), total)
 }
 
 func pbCopyN(dst io.Writer, src io.Reader, n int64) error {
@@ -75,8 +75,8 @@ func pbCopyN(dst io.Writer, src io.Reader, n int64) error {
 }
 
 func copyN(dst io.Writer, src io.Reader, n int64) error {
-	if _, err := io.CopyN(dst, src, n); err != nil && err != io.EOF {
-		return fmt.Errorf("not copied: %v", err)
+	if _, err := io.CopyN(dst, src, n); err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("not copied: %w", err)
 	}
 	return nil
 }
