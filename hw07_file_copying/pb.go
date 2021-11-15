@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 )
 
@@ -12,6 +13,7 @@ type ProgressBar struct {
 	rate           string
 	graph          string
 	pattern        string
+	output         io.Writer
 }
 
 func NewProgressBar(total int64) *ProgressBar {
@@ -20,8 +22,14 @@ func NewProgressBar(total int64) *ProgressBar {
 		current: 0,
 		percent: 0,
 		graph:   ">",
-		pattern: "\r[%-100s]%3d%% %8d/%d bite",
+		pattern: "\r[%-100s]%3d%% %6d/%d bite",
+		output:  os.Stdout,
 	}
+}
+
+func (pb *ProgressBar) SetOutput(out io.Writer) *ProgressBar {
+	pb.output = out
+	return pb
 }
 
 func (pb *ProgressBar) SetTotal(t int64) *ProgressBar {
@@ -48,9 +56,9 @@ func (pb *ProgressBar) Reset() {
 	pb.rate = ""
 }
 
-func (pb *ProgressBar) Add(n int) {
-	pb.current += int64(n)
-	pb.render()
+func (pb *ProgressBar) Add(n int64) {
+	pb.current += n
+	pb.write()
 }
 
 func (pb *ProgressBar) getPercent() int {
@@ -61,13 +69,13 @@ func (pb *ProgressBar) String() string {
 	return fmt.Sprintf(pb.pattern, pb.rate, pb.percent, pb.total, pb.current)
 }
 
-func (pb *ProgressBar) render() {
+func (pb *ProgressBar) write() {
 	prev := pb.percent
 	pb.percent = pb.getPercent()
 	if pb.percent != prev && pb.percent%2 == 0 {
 		pb.rate = strings.Repeat(pb.graph, pb.percent)
 	}
-	fmt.Print(pb.String())
+	fmt.Fprint(pb.output, pb.String())
 }
 
 func (pb *ProgressBar) NewProgressBarWriter(writer io.Writer) *ProgressBarWriter {
@@ -81,7 +89,7 @@ type ProgressBarWriter struct {
 
 func (w *ProgressBarWriter) Write(p []byte) (n int, err error) {
 	n, err = w.Writer.Write(p)
-	w.bar.Add(n)
+	w.bar.Add(int64(n))
 	return
 }
 
