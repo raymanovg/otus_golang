@@ -25,7 +25,7 @@ func Copy(srcFilePath, dstFilePath string, offset, limit int64) error {
 		if !os.IsPermission(err) {
 			return ErrSrcFileIsNotPermitted
 		}
-		return fmt.Errorf("unknown error: %w", err)
+		return fmt.Errorf("unable to open src file: %w", err)
 	}
 	defer src.Close()
 
@@ -76,7 +76,7 @@ func pbCopyN(dst io.Writer, src io.Reader, n int64) error {
 
 func copyN(dst io.Writer, src io.Reader, n int64) error {
 	if _, err := io.CopyN(dst, src, n); err != nil && !errors.Is(err, io.EOF) {
-		return fmt.Errorf("not copied: %w", err)
+		return fmt.Errorf("unable to copy: %w", err)
 	}
 	return nil
 }
