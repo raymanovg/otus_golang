@@ -23,19 +23,6 @@ func TestCopy(t *testing.T) {
 		require.EqualError(t, err, ErrSrcFileIsNotExist.Error(), "must be error about file is not exist")
 	})
 
-	t.Run("exist dst file", func(t *testing.T) {
-		srcFilePath := "testdata/input.txt"
-		dstFilePath := "/tmp/output.txt"
-
-		dstFile, err := os.Create(dstFilePath)
-		require.NoError(t, err, "can't create dst file")
-		defer os.Remove(dstFilePath)
-		defer dstFile.Close()
-
-		err = Copy(srcFilePath, dstFilePath, 0, 0)
-		require.EqualError(t, err, ErrDstFileAlreadyExists.Error(), "must be error if dst file is already exist")
-	})
-
 	t.Run("offset exceeds file size", func(t *testing.T) {
 		srcFilePath := "testdata/input.txt"
 		dstFilePath := "/tmp/output.txt"

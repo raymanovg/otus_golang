@@ -12,7 +12,6 @@ var (
 
 	ErrSrcFileIsNotExist     = errors.New("src file is not exist")
 	ErrSrcFileIsNotPermitted = errors.New("src file is not permitted")
-	ErrDstFileAlreadyExists  = errors.New("dst file already exists")
 	ErrUnsupportedFile       = errors.New("unsupported file")
 	ErrOffsetExceedsFileSize = errors.New("offset exceeds file size")
 )
@@ -42,9 +41,6 @@ func Copy(srcFilePath, dstFilePath string, offset, limit int64) error {
 		return ErrOffsetExceedsFileSize
 	}
 
-	if _, err := os.Stat(dstFilePath); !errors.Is(err, os.ErrNotExist) {
-		return ErrDstFileAlreadyExists
-	}
 	dst, err := os.Create(dstFilePath)
 	if err != nil {
 		return fmt.Errorf("unable to create dst file: %v", err)
