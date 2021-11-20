@@ -8,7 +8,7 @@ import (
 )
 
 func TestCopy(t *testing.T) {
-	WithProgressBar = true
+	WithProgressBar = false
 	t.Run("unsupported file to copy", func(t *testing.T) {
 		err := Copy("/dev/urandom", "/tmp/urandom.txt", 0, 0)
 		defer os.Remove("/tmp/urandom.txt")

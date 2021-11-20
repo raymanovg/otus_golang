@@ -52,17 +52,15 @@ func Copy(srcFilePath, dstFilePath string, offset, limit int64) error {
 	}
 
 	total := size - offset
-	if limit == 0 || limit > total {
-		limit = total
-	} else {
+	if limit != 0 && limit+offset <= size {
 		total = limit
 	}
 
 	if WithProgressBar {
-		return pbCopyN(dst, io.LimitReader(src, limit), total)
+		return pbCopyN(dst, src, total)
 	}
 
-	return copyN(dst, io.LimitReader(src, limit), total)
+	return copyN(dst, src, total)
 }
 
 func pbCopyN(dst io.Writer, src io.Reader, n int64) error {
