@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 )
 
 var (
@@ -18,5 +19,16 @@ func init() {
 
 func main() {
 	flag.Parse()
-	// Place your code here.
+
+	if from == "" {
+		panic("src file is not defined")
+	}
+	if to == "" {
+		panic("dst is not defined")
+	}
+
+	err := Copy(from, to, offset, limit)
+	if err != nil {
+		panic(fmt.Sprintf("unable to copy: %v", err))
+	}
 }
