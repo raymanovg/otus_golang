@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path"
@@ -16,6 +17,10 @@ type EnvValue struct {
 	NeedRemove bool
 }
 
+var (
+	ErrInvalidEnvFile = errors.New("invalid env file")
+)
+
 // ReadDir reads a specified directory and returns map of env variables.
 // Variables represented as files where filename is name of variable, file first line is a value.
 func ReadDir(dir string) (Environment, error) {
@@ -28,16 +33,19 @@ func ReadDir(dir string) (Environment, error) {
 	for _, envFile := range files {
 		envName := envFile.Name()
 		fileName := path.Join(dir, envName)
-		content, err := ioutil.ReadFile(fileName)
+		cnt, err := ioutil.ReadFile(fileName)
 		if err != nil {
 			return nil, fmt.Errorf("unable to read env file: %w", err)
 		}
 
-		replaced := bytes.Replace(content, []byte("\x00"), []byte("\n"), -1)
-		lines := bytes.Split(replaced, []byte("\n"))
-		val := strings.TrimRight(string(lines[0]), "\n \t")
+		if bytes.Contains(cnt, []byte("=")) {
+			return nil, ErrInvalidEnvFile
+		}
 
-		env[envName] = EnvValue{val, len(content) == 0}
+		lines := bytes.Split(cnt, []byte("\n"))
+		replaced := bytes.Replace(lines[0], []byte("\x00"), []byte("\n"), -1)
+		val := strings.TrimRight(string(replaced), "\n \t")
+		env[envName] = EnvValue{val, len(cnt) == 0}
 	}
 
 	return env, nil

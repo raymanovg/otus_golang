@@ -1,34 +1,43 @@
 package main
 
 import (
-	"fmt"
-	"log"
+	"errors"
 	"os"
 	"os/exec"
+)
+
+const (
+	SuccessReturnCode = iota
+	CantRunReturnCode
 )
 
 // RunCmd runs a command + arguments (cmd) with environment variables from env.
 func RunCmd(commands []string, env Environment) (returnCode int) {
 	cmd := exec.Command(commands[0], commands[1:]...)
 
-	cmd.Env = append(os.Environ(), getEnvList(env)...)
+	NormalizeEnv(env)
 
+	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		log.Fatal(err)
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return exitErr.ExitCode()
+		}
+		return CantRunReturnCode
 	}
-
-	return
+	return SuccessReturnCode
 }
 
-func getEnvList(env Environment) []string {
-	var envList []string
+func NormalizeEnv(env Environment) {
 	for n, e := range env {
+		if _, ok := os.LookupEnv(n); ok {
+			os.Unsetenv(n)
+		}
 		if !e.NeedRemove {
-			envList = append(envList, fmt.Sprintf("%s=%s", n, e.Value))
+			os.Setenv(n, e.Value)
 		}
 	}
-	return envList
 }
