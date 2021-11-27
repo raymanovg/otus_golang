@@ -13,7 +13,9 @@ const (
 
 // RunCmd runs a command + arguments (cmd) with environment variables from env.
 func RunCmd(commands []string, env Environment) (returnCode int) {
-	cmd := exec.Command(commands[0], commands[1:]...)
+	c := commands[0]
+	args := commands[1:]
+	cmd := exec.Command(c, args...)
 
 	NormalizeEnv(env)
 

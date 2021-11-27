@@ -17,9 +17,7 @@ type EnvValue struct {
 	NeedRemove bool
 }
 
-var (
-	ErrInvalidEnvFile = errors.New("invalid env file")
-)
+var ErrInvalidEnvFile = errors.New("invalid env file")
 
 // ReadDir reads a specified directory and returns map of env variables.
 // Variables represented as files where filename is name of variable, file first line is a value.
@@ -43,7 +41,7 @@ func ReadDir(dir string) (Environment, error) {
 		}
 
 		lines := bytes.Split(cnt, []byte("\n"))
-		replaced := bytes.Replace(lines[0], []byte("\x00"), []byte("\n"), -1)
+		replaced := bytes.ReplaceAll(lines[0], []byte("\x00"), []byte("\n"))
 		val := strings.TrimRight(string(replaced), "\n \t")
 		env[envName] = EnvValue{val, len(cnt) == 0}
 	}
