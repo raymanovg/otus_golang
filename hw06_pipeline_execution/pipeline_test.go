@@ -1,7 +1,10 @@
 package hw06pipelineexecution
 
 import (
+	"runtime"
 	"strconv"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,6 +37,15 @@ func TestPipeline(t *testing.T) {
 		g("Multiplier (* 2)", func(v interface{}) interface{} { return v.(int) * 2 }),
 		g("Adder (+ 100)", func(v interface{}) interface{} { return v.(int) + 100 }),
 		g("Stringifier", func(v interface{}) interface{} { return strconv.Itoa(v.(int)) }),
+	}
+
+	goID := func() int64 {
+		var buf [64]byte
+		n := runtime.Stack(buf[:], false)
+		idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+		id, _ := strconv.ParseInt(idField, 10, 64)
+
+		return id
 	}
 
 	t.Run("simple case", func(t *testing.T) {
@@ -89,5 +101,48 @@ func TestPipeline(t *testing.T) {
 
 		require.Len(t, result, 0)
 		require.Less(t, int64(elapsed), int64(abortDur)+int64(fault))
+	})
+
+	t.Run("execution stage concurrently", func(t *testing.T) {
+		in := make(Bi)
+
+		go func() {
+			for _, v := range []int{1, 2, 3, 4, 5} {
+				in <- v
+			}
+			close(in)
+		}()
+
+		stagesCount := 5
+		goroutinesCount := 5
+
+		runGoCount := make(map[int64]struct{}, stagesCount)
+
+		mu := sync.Mutex{}
+
+		stageFunc := func(v interface{}) interface{} {
+			mu.Lock()
+			runGoCount[goID()] = struct{}{}
+			mu.Unlock()
+			return v
+		}
+
+		var stages []Stage
+		for i := 1; i <= stagesCount; i++ {
+			stages = append(stages, g(strconv.Itoa(i), stageFunc))
+		}
+
+		for range ExecutePipeline(in, nil, stages...) {
+		}
+
+		require.Len(t, runGoCount, goroutinesCount, "not every stage in a separate goroutine")
+	})
+
+	t.Run("empty stage", func(t *testing.T) {
+		in := make(Bi)
+		done := make(Bi)
+
+		result := ExecutePipeline(in, done, []Stage{}...)
+		require.Nil(t, result, "if stage empty must return nil")
 	})
 }
