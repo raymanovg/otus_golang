@@ -1,11 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 type ValidationError struct {
@@ -15,84 +17,122 @@ type ValidationError struct {
 
 type ValidationErrors []ValidationError
 
-func (v ValidationErrors) Error() string {
-	var errStr string
-	for _, err := range v {
-		errStr += fmt.Sprintf("%s: %s \n", err.Field, err.Err.Error())
+func (vErrors ValidationErrors) Error() string {
+	b := strings.Builder{}
+	for _, vErr := range vErrors {
+		if b.Len() > 0 {
+			b.WriteString("\n")
+		}
+		if errors.As(vErr.Err, &ValidationErrors{}) {
+			b.WriteString(fmt.Sprintf("%s.%s", vErr.Field, vErr.Err))
+		} else {
+			b.WriteString(fmt.Sprintf("%s: %s", vErr.Field, vErr.Err))
+		}
 	}
-	return errStr
+	return b.String()
 }
 
 func Validate(iv interface{}) error {
 	v := reflect.ValueOf(iv)
-	t := v.Type()
-	if t.Kind() != reflect.Struct {
+	if v.Type().Kind() != reflect.Struct {
 		return fmt.Errorf("expected a struct, but received %T", iv)
 	}
+	return ValidateStruct(v)
+}
 
-	var verrors ValidationErrors
+func ValidateStruct(v reflect.Value) error {
+	t := v.Type()
+	if t.Kind() != reflect.Struct {
+		return fmt.Errorf("expected a struct, but received %T", v)
+	}
+
+	var vErrors ValidationErrors
 	for i := 0; i < t.NumField(); i++ {
-		structType := t.Field(i)
-		structValue := v.Field(i)
-		validateTagValue, ok := structType.Tag.Lookup("validate")
-		if !ok {
+		structField := t.Field(i)
+		if !isPublic(structField) {
 			continue
 		}
 
-		validationRules, err := ValidationRulesFromTagValue(validateTagValue)
+		validationRules, err := RulesFromTag(structField.Tag)
 		if err != nil {
-			verrors = append(verrors, ValidationError{structType.Name, err})
-			continue
+			return err
 		}
 
-		//nolint:exhaustive
-		switch structValue.Kind() {
+		structValue := v.Field(i)
+
+		var vErr error
+		switch structValue.Kind() { //nolint:exhaustive
 		case reflect.String:
-			if err := ValidateString(structValue.String(), validationRules); err != nil {
-				verrors = append(verrors, ValidationError{structType.Name, err})
-			}
+			vErr = validateString(structValue, validationRules)
 		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
-			if err := ValidateInt(structValue.Int(), validationRules); err != nil {
-				verrors = append(verrors, ValidationError{structType.Name, err})
-			}
+			vErr = validateInt(structValue, validationRules)
 		case reflect.Slice:
-			sliceValue := structValue.Index(0)
-			for i := 0; i < structValue.Len(); i++ {
-				switch sliceValue.Kind() {
-				case reflect.String:
-					if err := ValidateString(sliceValue.String(), validationRules); err != nil {
-						verrors = append(verrors, ValidationError{structType.Name, err})
-					}
-				case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
-					if err := ValidateInt(sliceValue.Int(), validationRules); err != nil {
-						verrors = append(verrors, ValidationError{structType.Name, err})
-					}
-				}
-			}
+			vErr = validateSlice(structValue, validationRules)
 		case reflect.Struct:
-			// TODO
+			if validationRules[0].Type == RuleTypeNested {
+				vErr = ValidateStruct(structValue)
+			}
+		}
+
+		if vErr != nil {
+			vErrors = append(vErrors, ValidationError{structField.Name, vErr})
 		}
 	}
 
-	return verrors
+	if len(vErrors) > 0 {
+		return vErrors
+	}
+	return nil
 }
 
-func ValidateString(strValue string, rules ValidationRules) error {
+func isPublic(sf reflect.StructField) bool {
+	return unicode.IsUpper([]rune(sf.Name)[0])
+}
+
+func validateSlice(v reflect.Value, rules ValidationRules) error {
+	if v.Type().Kind() != reflect.Slice {
+		return fmt.Errorf("expected a slice, but received %T", v.Interface())
+	}
+
+	kind := v.Index(0).Kind()
+	for i := 0; i < v.Len(); i++ {
+		switch kind {
+		case reflect.String:
+			if err := validateString(v.Index(i), rules); err != nil {
+				return err
+			}
+		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
+			if err := validateInt(v.Index(i), rules); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func validateString(v reflect.Value, rules ValidationRules) error {
+	if v.Type().Kind() != reflect.String {
+		return fmt.Errorf("expected a struct, but received %T", v.Interface())
+	}
+
+	strVal := v.String()
 	for _, vr := range rules {
-		//nolint: exhaustive
-		switch vr.Type {
+		switch vr.Type { //nolint: exhaustive
 		case RuleTypeLen:
 			i, err := strconv.Atoi(vr.Rule)
 			if err != nil {
 				return fmt.Errorf("invalid validation rule %s", vr)
 			}
-			if i != len(strValue) {
+			if i != len(strVal) {
 				return fmt.Errorf("value len must be %s", vr.Rule)
 			}
 		case RuleTypeIn:
 			var ok bool
 			for _, expect := range strings.Split(vr.Rule, ",") {
-				ok = strValue == strings.TrimSpace(expect)
+				ok = strVal == strings.TrimSpace(expect)
+				if ok {
+					break
+				}
 			}
 			if !ok {
 				return fmt.Errorf("value must be in %s", vr.Rule)
@@ -102,7 +142,7 @@ func ValidateString(strValue string, rules ValidationRules) error {
 			if err != nil {
 				return fmt.Errorf("invalid validation rule %s: %w", vr, err)
 			}
-			if !rgxp.Match([]byte(strValue)) {
+			if !rgxp.Match([]byte(strVal)) {
 				return fmt.Errorf("value is not matched by expression %s", vr.Rule)
 			}
 		default:
@@ -113,7 +153,14 @@ func ValidateString(strValue string, rules ValidationRules) error {
 	return nil
 }
 
-func ValidateInt(intValue int64, rules ValidationRules) error {
+func validateInt(v reflect.Value, rules ValidationRules) error {
+	switch v.Type().Kind() {
+	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
+	default:
+		return fmt.Errorf("expected a struct, but received %T", v.Interface())
+	}
+
+	intVal := v.Int()
 	for _, vr := range rules {
 		//nolint: exhaustive
 		switch vr.Type {
@@ -122,7 +169,7 @@ func ValidateInt(intValue int64, rules ValidationRules) error {
 			if err != nil {
 				return fmt.Errorf("invalid validation rule '%s': %w", vr, err)
 			}
-			if int64(i) > intValue {
+			if int64(i) > intVal {
 				return fmt.Errorf("value min must be %s", vr.Rule)
 			}
 		case RuleTypeMax:
@@ -130,7 +177,7 @@ func ValidateInt(intValue int64, rules ValidationRules) error {
 			if err != nil {
 				return fmt.Errorf("invalid validation rule '%s': %w", vr, err)
 			}
-			if int64(max) < intValue {
+			if int64(max) < intVal {
 				return fmt.Errorf("value max must be %s", vr.Rule)
 			}
 		case RuleTypeIn:
@@ -140,7 +187,7 @@ func ValidateInt(intValue int64, rules ValidationRules) error {
 				if err != nil {
 					return fmt.Errorf("invalid validation rule '%s': %w", vr, err)
 				}
-				ok = intValue == int64(i)
+				ok = intVal == int64(i)
 			}
 			if !ok {
 				return fmt.Errorf("value must be in '%s'", vr.Rule)

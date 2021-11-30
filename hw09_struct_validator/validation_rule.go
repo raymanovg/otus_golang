@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -25,34 +26,41 @@ type ValidationRule struct {
 }
 
 func (vr ValidationRule) String() string {
-	return fmt.Sprintf("%s:%s", vr.Type, vr.Rule)
+	if vr.Rule != "" {
+		return fmt.Sprintf("%s:%s", vr.Type, vr.Rule)
+	}
+	return vr.Type
 }
 
-func ValidationRuleFromStringRule(strRule string) (ValidationRule, error) {
+func RuleFromStringRule(strRule string) (ValidationRule, error) {
 	var vr ValidationRule
 	parsedRule := strings.Split(strRule, ":")
-	if len(parsedRule) < 2 {
-		return vr, ErrInvalidValidationRule
-	}
 	switch parsedRule[0] {
 	case RuleTypeLen, RuleTypeRegexp, RuleTypeMax, RuleTypeMin, RuleTypeIn:
+		if len(parsedRule) < 2 {
+			return vr, ErrInvalidValidationRule
+		}
 		vr.Type = parsedRule[0]
 		vr.Rule = strings.Join(parsedRule[1:], ":") // join if validation rule contains ":" symbol
 		return vr, nil
 	case RuleTypeNested:
 		vr.Type = RuleTypeNested
+		return vr, nil
 	}
 	return vr, ErrInvalidValidationRule
 }
 
-func ValidationRulesFromTagValue(tagValue string) (ValidationRules, error) {
+func RulesFromTag(tag reflect.StructTag) (ValidationRules, error) {
 	var rules ValidationRules
-	for _, strRule := range strings.Split(tagValue, "|") {
-		vr, err := ValidationRuleFromStringRule(strRule)
-		if err != nil {
-			return nil, err
+	if tagValue, ok := tag.Lookup("validate"); ok {
+		for _, strRule := range strings.Split(tagValue, "|") {
+			vr, err := RuleFromStringRule(strRule)
+			if err != nil {
+				return nil, err
+			}
+			rules = append(rules, vr)
 		}
-		rules = append(rules, vr)
 	}
+
 	return rules, nil
 }
