@@ -93,6 +93,9 @@ func validateSlice(v reflect.Value, rules ValidationRules) error {
 	if v.Type().Kind() != reflect.Slice {
 		return fmt.Errorf("expected a slice, but received %T", v.Interface())
 	}
+	if v.Len() == 0 {
+		return nil
+	}
 
 	kind := v.Index(0).Kind()
 	for i := 0; i < v.Len(); i++ {
@@ -187,7 +190,10 @@ func validateInt(v reflect.Value, rules ValidationRules) error {
 				if err != nil {
 					return fmt.Errorf("invalid validation rule '%s': %w", vr, err)
 				}
-				ok = intVal == int64(i)
+				if intVal == int64(i) {
+					ok = true
+					break
+				}
 			}
 			if !ok {
 				return fmt.Errorf("value must be in '%s'", vr.Rule)

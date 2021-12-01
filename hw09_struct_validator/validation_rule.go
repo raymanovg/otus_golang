@@ -32,12 +32,12 @@ func (vr ValidationRule) String() string {
 	return vr.Type
 }
 
-func RuleFromStringRule(strRule string) (ValidationRule, error) {
+func RuleFromString(strRule string) (ValidationRule, error) {
 	var vr ValidationRule
 	parsedRule := strings.Split(strRule, ":")
 	switch parsedRule[0] {
 	case RuleTypeLen, RuleTypeRegexp, RuleTypeMax, RuleTypeMin, RuleTypeIn:
-		if len(parsedRule) < 2 {
+		if len(parsedRule) < 2 || parsedRule[1] == "" {
 			return vr, ErrInvalidValidationRule
 		}
 		vr.Type = parsedRule[0]
@@ -54,7 +54,7 @@ func RulesFromTag(tag reflect.StructTag) (ValidationRules, error) {
 	var rules ValidationRules
 	if tagValue, ok := tag.Lookup("validate"); ok {
 		for _, strRule := range strings.Split(tagValue, "|") {
-			vr, err := RuleFromStringRule(strRule)
+			vr, err := RuleFromString(strRule)
 			if err != nil {
 				return nil, err
 			}
