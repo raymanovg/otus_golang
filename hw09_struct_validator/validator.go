@@ -99,7 +99,7 @@ func validateSlice(v reflect.Value, rules ValidationRules) error {
 
 	kind := v.Index(0).Kind()
 	for i := 0; i < v.Len(); i++ {
-		switch kind {
+		switch kind { //nolint:exhaustive
 		case reflect.String:
 			if err := validateString(v.Index(i), rules); err != nil {
 				return err
@@ -120,7 +120,7 @@ func validateString(v reflect.Value, rules ValidationRules) error {
 
 	strVal := v.String()
 	for _, vr := range rules {
-		switch vr.Type { //nolint: exhaustive
+		switch vr.Type {
 		case RuleTypeLen:
 			i, err := strconv.Atoi(vr.Rule)
 			if err != nil {
@@ -157,7 +157,7 @@ func validateString(v reflect.Value, rules ValidationRules) error {
 }
 
 func validateInt(v reflect.Value, rules ValidationRules) error {
-	switch v.Type().Kind() {
+	switch v.Type().Kind() { //nolint:exhaustive
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
 	default:
 		return fmt.Errorf("expected a struct, but received %T", v.Interface())
@@ -165,7 +165,6 @@ func validateInt(v reflect.Value, rules ValidationRules) error {
 
 	intVal := v.Int()
 	for _, vr := range rules {
-		//nolint: exhaustive
 		switch vr.Type {
 		case RuleTypeMin:
 			i, err := strconv.Atoi(vr.Rule)
