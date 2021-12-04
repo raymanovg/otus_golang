@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,7 +12,6 @@ import (
 
 type UserRole string
 
-// Test the function on different structures and other types.
 type (
 	User struct {
 		ID     string `json:"id" validate:"len:36"`
@@ -44,11 +44,11 @@ type (
 	}
 )
 
-func TestValidate(t *testing.T) {
-	tests := []struct {
-		in              interface{}
-		expectedErr     error
-		expectErrString string
+func TestSuccessValidate(t *testing.T) {
+	cases := []struct {
+		in                interface{}
+		expectedErr       error
+		expectedErrString string
 	}{
 		{
 			User{
@@ -137,18 +137,105 @@ func TestValidate(t *testing.T) {
 		},
 	}
 
-	for i, tt := range tests {
+	for i, c := range cases {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
-			tt := tt
+			c := c
 			t.Parallel()
 
-			actualErr := Validate(tt.in)
+			actualErr := Validate(c.in)
 
-			require.Equal(t, actualErr, tt.expectedErr)
+			require.Equal(t, c.expectedErr, actualErr)
 			if actualErr != nil {
-				require.Equal(t, tt.expectErrString, actualErr.Error())
+				require.Equal(t, c.expectedErrString, actualErr.Error())
 			}
-			_ = tt
+			_ = c
+		})
+	}
+}
+
+func TestInvalidValidationRuleForType(t *testing.T) {
+	cases := []struct {
+		name              string
+		in                interface{}
+		expectedErr       error
+		expectedErrString string
+	}{
+		{
+			"invalid 'len' validate for int",
+			struct {
+				ID int `validate:"len:10"`
+			}{1},
+			ValidationErrors{
+				ValidationError{"ID", errors.New("unknown validation rule 'len:10' for int value")},
+			},
+			"ID: unknown validation rule 'len:10' for int value",
+		},
+		{
+			"invalid 'regexp' validate for int",
+			struct {
+				ID int `validate:"regexp:\\d+"`
+			}{1},
+			ValidationErrors{
+				ValidationError{"ID", errors.New("unknown validation rule 'regexp:\\d+' for int value")},
+			},
+			"ID: unknown validation rule 'regexp:\\d+' for int value",
+		},
+		{
+			name: "invalid 'in' validate for int",
+			in: struct {
+				ID int `validate:"in:foo,bar"`
+			}{1},
+			expectedErr: ValidationErrors{
+				ValidationError{
+					"ID",
+					fmt.Errorf(
+						"invalid validation rule 'in:foo,bar': %w",
+						&strconv.NumError{Func: "Atoi", Num: "foo", Err: strconv.ErrSyntax},
+					),
+				},
+			},
+			expectedErrString: "ID: invalid validation rule 'in:foo,bar': strconv.Atoi: parsing \"foo\": invalid syntax",
+		},
+		{
+			name: "invalid 'max' validate for string",
+			in: struct {
+				Name string `validate:"max:15"`
+			}{"Foo"},
+			expectedErr: ValidationErrors{
+				ValidationError{
+					"Name",
+					errors.New("unknown validation rule max:15 for string value"),
+				},
+			},
+			expectedErrString: "Name: unknown validation rule max:15 for string value",
+		},
+		{
+			name: "invalid 'min' validate for string",
+			in: struct {
+				Name string `validate:"min:10"`
+			}{"Foo"},
+			expectedErr: ValidationErrors{
+				ValidationError{
+					"Name",
+					errors.New("unknown validation rule min:10 for string value"),
+				},
+			},
+			expectedErrString: "Name: unknown validation rule min:10 for string value",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			c := c
+			t.Parallel()
+
+			actualErr := Validate(c.in)
+
+			require.Equal(t, c.expectedErr, actualErr)
+			if actualErr != nil {
+				require.Equal(t, c.expectedErrString, actualErr.Error())
+			}
+			_ = c
 		})
 	}
 }

@@ -149,7 +149,7 @@ func validateString(v reflect.Value, rules ValidationRules) error {
 				return fmt.Errorf("value is not matched by expression %s", vr.Rule)
 			}
 		default:
-			return fmt.Errorf("unknow validation rule %s for string", vr)
+			return fmt.Errorf("unknown validation rule %s for string value", vr)
 		}
 	}
 
