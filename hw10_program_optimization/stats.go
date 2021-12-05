@@ -2,11 +2,12 @@ package hw10programoptimization
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
 	"strings"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 type User struct {
@@ -37,7 +38,7 @@ func getUsers(r io.Reader) (users, error) {
 	result := make(users, 0, 100)
 	for sc.Scan() {
 		var user User
-		if err := json.Unmarshal(sc.Bytes(), &user); err != nil {
+		if err := jsoniter.Unmarshal(sc.Bytes(), &user); err != nil {
 			return nil, err
 		}
 		result = append(result, user)
