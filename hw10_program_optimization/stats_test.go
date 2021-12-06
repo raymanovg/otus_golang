@@ -1,4 +1,3 @@
-//go:build !bench
 // +build !bench
 
 package hw10programoptimization
@@ -37,4 +36,11 @@ func TestGetDomainStat(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, DomainStat{}, result)
 	})
+}
+
+func TestUnmarshalInvalidJson(t *testing.T) {
+	data := `{"Id":1,"Name":"`
+	result, err := GetDomainStat(bytes.NewBufferString(data), "")
+	require.Error(t, err)
+	require.Equal(t, DomainStat(nil), result)
 }
