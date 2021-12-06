@@ -28,17 +28,19 @@ func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
 	usersCh, errCh := getUsers(r)
 	domainCh := countDomains(usersCh, domain, done)
 
-	for d := range domainCh {
+	defer close(done)
+
+	for {
 		select {
 		case err := <-errCh:
-			close(done)
 			return nil, fmt.Errorf("get users error: %w", err)
-		default:
+		case d := <-domainCh:
+			if d == "" {
+				return result, nil
+			}
 			result[d]++
 		}
 	}
-
-	return result, nil
 }
 
 type users chan User
