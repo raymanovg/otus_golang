@@ -3,11 +3,9 @@ package hw10programoptimization
 import (
 	"bufio"
 	"fmt"
-	"io"
-	"regexp"
-	"strings"
-
 	jsoniter "github.com/json-iterator/go"
+	"io"
+	"strings"
 )
 
 type User struct {
@@ -23,43 +21,64 @@ type User struct {
 type DomainStat map[string]int
 
 func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
-	u, err := getUsers(r)
-	if err != nil {
-		return nil, fmt.Errorf("get users error: %w", err)
-	}
-	return countDomains(u, domain)
-}
-
-type users []User
-
-func getUsers(r io.Reader) (users, error) {
-	sc := bufio.NewScanner(r)
-
-	result := make(users, 0, 100)
-	for sc.Scan() {
-		var user User
-		if err := jsoniter.Unmarshal(sc.Bytes(), &user); err != nil {
-			return nil, err
-		}
-		result = append(result, user)
-	}
-
-	return result, nil
-}
-
-func countDomains(u users, domain string) (DomainStat, error) {
 	result := make(DomainStat)
+	done := make(chan struct{})
 
-	for _, user := range u {
-		matched, err := regexp.Match("\\."+domain, []byte(user.Email))
-		if err != nil {
-			return nil, err
-		}
+	usersCh, errCh := getUsers(r)
+	domainCh := countDomains(usersCh, domain, done)
 
-		if matched {
-			domain := strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])
-			result[domain]++
+	for d := range domainCh {
+		select {
+		case err := <-errCh:
+			close(done)
+			return nil, fmt.Errorf("get users error: %w", err)
+		default:
+			result[d]++
 		}
 	}
+
 	return result, nil
+}
+
+type users chan User
+
+func getUsers(r io.Reader) (users, chan error) {
+	usersCh := make(users)
+	errCh := make(chan error)
+
+	go func() {
+		defer close(usersCh)
+		sc := bufio.NewScanner(r)
+		for sc.Scan() {
+			var user User
+			if err := jsoniter.Unmarshal(sc.Bytes(), &user); err != nil {
+				errCh <- err
+				break
+			}
+			usersCh <- user
+		}
+	}()
+
+	return usersCh, errCh
+}
+
+func countDomains(u users, domain string, done chan struct{}) chan string {
+	domainCh := make(chan string)
+
+	subst := "." + domain
+	go func() {
+		defer close(domainCh)
+		for user := range u {
+			select {
+			case <-done:
+				return
+			default:
+			}
+			if strings.Contains(user.Email, subst) {
+				domainCh <- strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])
+			}
+		}
+	}()
+
+	return domainCh
 }
