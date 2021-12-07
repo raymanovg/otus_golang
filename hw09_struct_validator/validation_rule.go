@@ -34,14 +34,14 @@ func (vr ValidationRule) String() string {
 
 func RuleFromString(strRule string) (ValidationRule, error) {
 	var vr ValidationRule
-	parsedRule := strings.Split(strRule, ":")
+	parsedRule := strings.SplitN(strRule, ":", 2)
 	switch parsedRule[0] {
 	case RuleTypeLen, RuleTypeRegexp, RuleTypeMax, RuleTypeMin, RuleTypeIn:
 		if len(parsedRule) < 2 || parsedRule[1] == "" {
 			return vr, ErrInvalidValidationRule
 		}
 		vr.Type = parsedRule[0]
-		vr.Rule = strings.Join(parsedRule[1:], ":") // join if validation rule contains ":" symbol
+		vr.Rule = parsedRule[1]
 		return vr, nil
 	case RuleTypeNested:
 		vr.Type = RuleTypeNested
