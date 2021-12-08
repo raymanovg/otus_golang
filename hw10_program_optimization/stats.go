@@ -10,78 +10,40 @@ import (
 )
 
 type User struct {
-	ID       int
-	Name     string
-	Username string
-	Email    string
-	Phone    string
-	Password string
-	Address  string
+	Email string
 }
 
 type DomainStat map[string]int
 
 func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
+	subDomain := "." + domain
+	res, err := countDomains(r, subDomain)
+	if err != nil {
+		return nil, fmt.Errorf("get users error: %w", err)
+	}
+	return res, nil
+}
+
+func countDomains(r io.Reader, domain string) (DomainStat, error) {
 	result := make(DomainStat)
-	done := make(chan struct{})
-
-	usersCh, errCh := getUsers(r)
-	domainCh := countDomains(usersCh, domain, done)
-
-	defer close(done)
-
-	for {
-		select {
-		case err := <-errCh:
-			return nil, fmt.Errorf("get users error: %w", err)
-		case d := <-domainCh:
-			if d == "" {
-				return result, nil
-			}
-			result[d]++
+	sc := bufio.NewScanner(r)
+	user := &User{}
+	for sc.Scan() {
+		*user = User{}
+		if err := jsoniter.Unmarshal(sc.Bytes(), user); err != nil {
+			return nil, err
+		}
+		matchedDomain, ok := matchDomain(user.Email, domain)
+		if ok {
+			result[matchedDomain]++
 		}
 	}
+	return result, nil
 }
 
-type users chan User
-
-func getUsers(r io.Reader) (users, chan error) {
-	usersCh := make(users)
-	errCh := make(chan error)
-
-	go func() {
-		defer close(usersCh)
-		sc := bufio.NewScanner(r)
-		for sc.Scan() {
-			var user User
-			if err := jsoniter.Unmarshal(sc.Bytes(), &user); err != nil {
-				errCh <- err
-				break
-			}
-			usersCh <- user
-		}
-	}()
-
-	return usersCh, errCh
-}
-
-func countDomains(u users, domain string, done chan struct{}) chan string {
-	domainCh := make(chan string)
-
-	subst := "." + domain
-	go func() {
-		defer close(domainCh)
-		for user := range u {
-			select {
-			case <-done:
-				return
-			default:
-			}
-			if strings.Contains(user.Email, subst) {
-				domainCh <- strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])
-			}
-		}
-	}()
-
-	return domainCh
+func matchDomain(email string, subDomain string) (string, bool) {
+	if strings.Contains(email, subDomain) {
+		return strings.ToLower(strings.SplitN(email, "@", 2)[1]), true
+	}
+	return "", false
 }
