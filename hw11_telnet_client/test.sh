@@ -10,10 +10,6 @@ sleep 1
 (echo -e "I\nam\nTELNET client\n" && cat 2>/dev/null) | ./go-telnet --timeout=5s localhost 4242 >/tmp/telnet.out &
 TL_PID=$!
 
-
-cat /tmp/nc.out
-cat /tmp/telnet.out
-
 sleep 5
 kill ${TL_PID} 2>/dev/null || true
 kill ${NC_PID} 2>/dev/null || true
@@ -21,7 +17,7 @@ kill ${NC_PID} 2>/dev/null || true
 function fileEquals() {
   local fileData
   fileData=$(cat "$1")
-  [ "${fileData}" = "${2}" ] || (echo -e "unexpected output, $1:\n${fileData}" )
+  [ "${fileData}" = "${2}" ] || (echo -e "unexpected output, $1:\n${fileData}" && exit 1)
 }
 
 expected_nc_out='I
