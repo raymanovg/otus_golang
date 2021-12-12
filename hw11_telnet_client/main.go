@@ -29,8 +29,6 @@ func main() {
 		return
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT)
-
 	timeoutDur, err := time.ParseDuration(timeout)
 	if err != nil {
 		logger.Println("unable to parse duration")
@@ -39,8 +37,7 @@ func main() {
 
 	address := net.JoinHostPort(args[0], args[1])
 	client := NewTelnetClient(address, timeoutDur, os.Stdin, os.Stdout)
-	err = client.Connect()
-	if err != nil {
+	if err = client.Connect(); err != nil {
 		logger.Printf("unable to connect to server %s\n", address)
 		return
 	}
@@ -49,6 +46,7 @@ func main() {
 
 	defer client.Close()
 
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT)
 	go send(cancel, client)
 	go receive(cancel, client)
 
@@ -57,8 +55,7 @@ func main() {
 
 func send(cancel context.CancelFunc, client TelnetClient) {
 	defer cancel()
-	err := client.Send()
-	if err != nil {
+	if err := client.Send(); err != nil {
 		logger.Printf("unexpected sending err: %v", err)
 		return
 	}
@@ -67,8 +64,7 @@ func send(cancel context.CancelFunc, client TelnetClient) {
 
 func receive(cancel context.CancelFunc, client TelnetClient) {
 	defer cancel()
-	err := client.Receive()
-	if err != nil {
+	if err := client.Receive(); err != nil {
 		logger.Printf("unexpected receiving error: %v", err)
 		return
 	}
