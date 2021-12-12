@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -9,7 +8,7 @@ import (
 	"time"
 )
 
-var ErrConnectionClosedByPeer = errors.New("connection was closed by peer")
+var ErrConnectionNotEstablished = errors.New("connection not established")
 
 type TelnetClient interface {
 	Connect() error
@@ -41,32 +40,23 @@ func (t *Telnet) Connect() error {
 }
 
 func (t *Telnet) Send() error {
-	scanner := bufio.NewScanner(t.in)
-	if !scanner.Scan() {
-		return io.EOF
+	if t.conn == nil {
+		return ErrConnectionNotEstablished
 	}
-	in := append(scanner.Bytes(), []byte("\n")...)
-	if _, err := t.conn.Write(in); err != nil {
+	_, err := io.Copy(t.conn, t.in)
+	if err != nil {
 		return fmt.Errorf("unable to send: %w", err)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("unable to read: %w", err)
 	}
 	return nil
 }
 
 func (t *Telnet) Receive() error {
-	scanner := bufio.NewScanner(t.conn)
-	if !scanner.Scan() {
-		return ErrConnectionClosedByPeer
+	if t.conn == nil {
+		return ErrConnectionNotEstablished
 	}
-	out := append(scanner.Bytes(), []byte("\n")...)
-	if _, err := t.out.Write(out); err != nil {
-		return fmt.Errorf("unable to write: %w", err)
-	}
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("unable to recieve: %w", err)
+	_, err := io.Copy(t.out, t.conn)
+	if err != nil {
+		return fmt.Errorf("unable to receive: %w", err)
 	}
 	return nil
 }

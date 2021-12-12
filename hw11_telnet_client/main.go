@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -51,48 +49,28 @@ func main() {
 
 	defer client.Close()
 
-	go send(ctx, cancel, client)
-	go receive(ctx, cancel, client)
+	go send(cancel, client)
+	go receive(cancel, client)
 
 	<-ctx.Done()
 }
 
-func send(ctx context.Context, cancel context.CancelFunc, client TelnetClient) {
+func send(cancel context.CancelFunc, client TelnetClient) {
 	defer cancel()
-	for {
-		err := client.Send()
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			if err == nil {
-				continue
-			}
-			if errors.Is(err, io.EOF) {
-				logger.Println("...EOF")
-			} else {
-				logger.Println(err)
-			}
-			return
-		}
+	err := client.Send()
+	if err != nil {
+		logger.Printf("unexpected sending err: %v", err)
+		return
 	}
+	logger.Println("...EOF")
 }
 
-func receive(ctx context.Context, cancel context.CancelFunc, client TelnetClient) {
+func receive(cancel context.CancelFunc, client TelnetClient) {
 	defer cancel()
-	for {
-		err := client.Receive()
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			if err == nil {
-				continue
-			}
-			if errors.Is(err, ErrConnectionClosedByPeer) {
-				logger.Println("...connection was closed by peer")
-			}
-			return
-		}
+	err := client.Receive()
+	if err != nil {
+		logger.Printf("unexpected receiving error: %v", err)
+		return
 	}
+	logger.Println("...connection was closed by peer")
 }
