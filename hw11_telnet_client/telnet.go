@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -33,11 +32,7 @@ func (t *Telnet) Close() error {
 }
 
 func (t *Telnet) Connect() error {
-	dialer := net.Dialer{
-		Timeout: t.timeout,
-	}
-	ctx := context.Background()
-	conn, err := dialer.DialContext(ctx, "tcp", t.address)
+	conn, err := net.DialTimeout("tcp", t.address, t.timeout)
 	if err != nil {
 		return fmt.Errorf("unble to connect: %w", err)
 	}

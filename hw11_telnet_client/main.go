@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -13,7 +13,11 @@ import (
 	"time"
 )
 
-var timeout string
+var (
+	timeout string
+
+	logger = log.New(os.Stderr, "", 0)
+)
 
 func init() {
 	flag.StringVar(&timeout, "timeout", "10s", "timeout for connection")
@@ -23,15 +27,15 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) < 2 {
-		fmt.Fprintf(os.Stderr, "undefined host and port")
+		logger.Println("undefined host and port")
 		return
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGKILL)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT)
 
 	timeoutDur, err := time.ParseDuration(timeout)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "unable to parse duration")
+		logger.Println("unable to parse duration")
 		return
 	}
 
@@ -39,11 +43,11 @@ func main() {
 	client := NewTelnetClient(address, timeoutDur, os.Stdin, os.Stdout)
 	err = client.Connect()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "unable to connect to server %s\n", address)
+		logger.Printf("unable to connect to server %s\n", address)
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "...connected to %s\n", address)
+	logger.Printf("...connected to %s\n", address)
 
 	defer client.Close()
 
@@ -65,9 +69,9 @@ func send(ctx context.Context, cancel context.CancelFunc, client TelnetClient) {
 				continue
 			}
 			if errors.Is(err, io.EOF) {
-				fmt.Fprintln(os.Stderr, "...EOF")
+				logger.Println("...EOF")
 			} else {
-				fmt.Fprintln(os.Stderr, err)
+				logger.Println(err)
 			}
 			return
 		}
@@ -86,7 +90,7 @@ func receive(ctx context.Context, cancel context.CancelFunc, client TelnetClient
 				continue
 			}
 			if errors.Is(err, ErrConnectionClosedByPeer) {
-				fmt.Fprintln(os.Stderr, "...connection was closed by peer")
+				logger.Println("...connection was closed by peer")
 			}
 			return
 		}
