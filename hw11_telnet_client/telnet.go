@@ -43,20 +43,19 @@ func (t *Telnet) Send() error {
 	if t.conn == nil {
 		return ErrConnectionNotEstablished
 	}
-	_, err := io.Copy(t.conn, t.in)
-	if err != nil {
-		return fmt.Errorf("unable to send: %w", err)
-	}
-	return nil
+	return copy(t.in, t.conn)
 }
 
 func (t *Telnet) Receive() error {
 	if t.conn == nil {
 		return ErrConnectionNotEstablished
 	}
-	_, err := io.Copy(t.out, t.conn)
-	if err != nil {
-		return fmt.Errorf("unable to receive: %w", err)
+	return copy(t.conn, t.out)
+}
+
+func copy(src io.Reader, dest io.Writer) error {
+	if _, err := io.Copy(dest, src); err != nil {
+		return fmt.Errorf("unable to copy: %w", err)
 	}
 	return nil
 }
