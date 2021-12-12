@@ -10,9 +10,7 @@ import (
 	"time"
 )
 
-var (
-	ErrConnectionClosedByPeer = errors.New("connection was closed by peer")
-)
+var ErrConnectionClosedByPeer = errors.New("connection was closed by peer")
 
 type TelnetClient interface {
 	Connect() error
@@ -53,8 +51,7 @@ func (t *Telnet) Send() error {
 		return io.EOF
 	}
 	in := append(scanner.Bytes(), []byte("\n")...)
-	_, err := t.conn.Write(in)
-	if err != nil {
+	if _, err := t.conn.Write(in); err != nil {
 		return fmt.Errorf("unable to send: %w", err)
 	}
 	if err := scanner.Err(); err != nil {
@@ -69,8 +66,7 @@ func (t *Telnet) Receive() error {
 		return ErrConnectionClosedByPeer
 	}
 	out := append(scanner.Bytes(), []byte("\n")...)
-	_, err := t.out.Write(out)
-	if err != nil {
+	if _, err := t.out.Write(out); err != nil {
 		return fmt.Errorf("unable to write: %w", err)
 	}
 	return nil

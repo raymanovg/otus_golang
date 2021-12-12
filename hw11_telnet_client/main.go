@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -36,8 +37,8 @@ func main() {
 
 	address := net.JoinHostPort(args[0], args[1])
 	client := NewTelnetClient(address, timeoutDur, os.Stdin, os.Stdout)
-	connErr := client.Connect()
-	if connErr != nil {
+	err = client.Connect()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to connect to server %s\n", address)
 		return
 	}
@@ -63,7 +64,7 @@ func send(ctx context.Context, cancel context.CancelFunc, client TelnetClient) {
 			if err == nil {
 				continue
 			}
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				fmt.Fprintln(os.Stderr, "...EOF")
 			} else {
 				fmt.Fprintln(os.Stderr, err)
@@ -84,7 +85,7 @@ func receive(ctx context.Context, cancel context.CancelFunc, client TelnetClient
 			if err == nil {
 				continue
 			}
-			if err == ErrConnectionClosedByPeer {
+			if errors.Is(err, ErrConnectionClosedByPeer) {
 				fmt.Fprintln(os.Stderr, "...connection was closed by peer")
 			}
 			return
