@@ -43,19 +43,19 @@ func (t *Telnet) Send() error {
 	if t.conn == nil {
 		return ErrConnectionNotEstablished
 	}
-	return copy(t.in, t.conn)
+	return copyBytes(t.in, t.conn)
 }
 
 func (t *Telnet) Receive() error {
 	if t.conn == nil {
 		return ErrConnectionNotEstablished
 	}
-	return copy(t.conn, t.out)
+	return copyBytes(t.conn, t.out)
 }
 
-func copy(src io.Reader, dest io.Writer) error {
+func copyBytes(src io.Reader, dest io.Writer) error {
 	if _, err := io.Copy(dest, src); err != nil {
-		return fmt.Errorf("unable to copy: %w", err)
+		return fmt.Errorf("unable to copyBytes: %w", err)
 	}
 	return nil
 }
