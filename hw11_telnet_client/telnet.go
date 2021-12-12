@@ -45,7 +45,8 @@ func (t *Telnet) Send() error {
 	if !scanner.Scan() {
 		return io.EOF
 	}
-	in := append(scanner.Bytes(), []byte("\n")...)
+	//in := append(scanner.Bytes(), []byte("\n")...)
+	in := scanner.Bytes()
 	if _, err := t.conn.Write(in); err != nil {
 		return fmt.Errorf("unable to send: %w", err)
 	}
@@ -60,7 +61,8 @@ func (t *Telnet) Receive() error {
 	if !scanner.Scan() {
 		return ErrConnectionClosedByPeer
 	}
-	out := append(scanner.Bytes(), []byte("\n")...)
+	//out := append(scanner.Bytes(), []byte("\n")...)
+	out := scanner.Bytes()
 	if _, err := t.out.Write(out); err != nil {
 		return fmt.Errorf("unable to write: %w", err)
 	}
