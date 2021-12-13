@@ -75,7 +75,7 @@ func TestTelnetClient(t *testing.T) {
 		require.EqualError(t, client.Send(), ErrConnectionNotEstablished.Error())
 	})
 
-	t.Run("connect not established", func(t *testing.T) {
+	t.Run("unreachable server to connect", func(t *testing.T) {
 		in := &bytes.Buffer{}
 		out := &bytes.Buffer{}
 
@@ -83,7 +83,7 @@ func TestTelnetClient(t *testing.T) {
 		require.NoError(t, err)
 
 		client := NewTelnetClient("127.0.0.1:4242", timeout, ioutil.NopCloser(in), out)
-		require.EqualError(t, client.Receive(), ErrConnectionNotEstablished.Error())
-		require.EqualError(t, client.Send(), ErrConnectionNotEstablished.Error())
+		require.NotNil(t, client.Connect(), "must be error if server is not reachable")
+		defer func() { require.NoError(t, client.Close()) }()
 	})
 }

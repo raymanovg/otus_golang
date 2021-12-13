@@ -27,6 +27,9 @@ type Telnet struct {
 
 func (t *Telnet) Close() error {
 	t.in.Close()
+	if t.conn == nil {
+		return nil
+	}
 	return t.conn.Close()
 }
 
