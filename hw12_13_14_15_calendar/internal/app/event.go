@@ -1,4 +1,4 @@
-package storage
+package app
 
 import "time"
 
@@ -9,6 +9,4 @@ type Event struct {
 	EventTime time.Time
 	Duration  time.Duration
 	UserID    string
-	CreatedAt time.Time
-	UpdatedAt time.Time
 }

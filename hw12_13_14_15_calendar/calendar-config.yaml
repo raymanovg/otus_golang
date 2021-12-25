@@ -1,2 +1,4 @@
 logger:
   level: debug
+server:
+  addr: ":8080"

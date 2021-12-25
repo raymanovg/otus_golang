@@ -32,3 +32,7 @@ func (l Logger) Error(msg string) {
 func (l Logger) Debug(msg string) {
 	fmt.Fprintf(l.out, "[ DEBUG ] %s \n", msg)
 }
+
+func (l Logger) Write(msg string) {
+	fmt.Fprintln(l.out, msg)
+}

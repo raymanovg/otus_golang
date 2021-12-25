@@ -35,7 +35,7 @@ var api = &cobra.Command{
 		storage := memorystorage.New()
 		calendar := app.New(logg, storage)
 
-		server := internalhttp.NewServer(logg, calendar)
+		server := internalhttp.NewServer(config.Server.Addr, logg, calendar)
 
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 		defer cancel()
