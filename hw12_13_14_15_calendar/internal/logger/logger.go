@@ -18,11 +18,17 @@ func New(out io.Writer, level string) *Logger {
 }
 
 func (l Logger) Info(msg string) {
-	fmt.Fprintln(l.out, msg)
+	fmt.Fprintf(l.out, "[ INFO ] %s \n", msg)
+}
+
+func (l Logger) Warn(msg string) {
+	fmt.Fprintf(l.out, "[ WARNINGN ] %s \n", msg)
 }
 
 func (l Logger) Error(msg string) {
-	// TODO
+	fmt.Fprintf(l.out, "[ ERROR ] %s \n", msg)
 }
 
-// TODO
+func (l Logger) Debug(msg string) {
+	fmt.Fprintf(l.out, "[ DEBUG ] %s \n", msg)
+}

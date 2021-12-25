@@ -4,22 +4,33 @@ import (
 	"context"
 )
 
-type Server struct { // TODO
+type Server struct {
+	log Logger
+	app Application
 }
 
-type Logger interface { // TODO
+type Logger interface {
+	Info(string)
+	Warn(string)
+	Error(string)
+	Debug(string)
 }
 
-type Application interface { // TODO
+type Application interface {
+	CreateEvent(ctx context.Context, id, title string) error
 }
 
 func NewServer(logger Logger, app Application) *Server {
-	return &Server{}
+	return &Server{
+		log: logger,
+		app: app,
+	}
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	// TODO
+	s.log.Info("Server started")
 	<-ctx.Done()
+	s.log.Info("Server stopped")
 	return nil
 }
 

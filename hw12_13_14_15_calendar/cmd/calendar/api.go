@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,14 +19,17 @@ import (
 var configFile string
 
 func init() {
-	api.Flags().StringVar(&configFile, "config", "/etc/calendar/config.toml", "Path to configuration file")
+	api.Flags().StringVar(&configFile, "config", "./calendar-config.yaml", "Path to configuration file")
 }
 
 var api = &cobra.Command{
 	Use:   "api",
 	Short: "calendar api",
 	Run: func(cmd *cobra.Command, args []string) {
-		config := NewConfig()
+		config, err := NewConfig(configFile)
+		if err != nil {
+			panic(fmt.Sprintf("unable to init conf: %s", err))
+		}
 		logg := logger.New(os.Stdout, config.Logger.Level)
 
 		storage := memorystorage.New()
