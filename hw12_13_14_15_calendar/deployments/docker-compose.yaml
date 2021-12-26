@@ -1,1 +1,30 @@
 version: "3"
+services:
+  calendar:
+    container_name: calendar
+    image: calendar:develop
+    ports:
+      - 8080:8080
+    depends_on:
+      - postgres
+    networks:
+      - calendar-net
+  postgres:
+    container_name: postgres
+    image: postgres:12-alpine
+    environment:
+      - POSTGRES_DB=calendar
+      - POSTGRES_USER=calendar
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - 5444:5432
+    healthcheck:
+      test: "pg_isready -U calendar"
+      interval: 5s
+      retries: 5
+    networks:
+      - calendar-net
+
+networks:
+  calendar-net:

@@ -2,6 +2,7 @@ package internalhttp
 
 import (
 	"context"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 )
 
 type Server struct {
+	conf       config.ServerConf
 	log        *zap.Logger
 	app        Application
 	httpServer *http.Server
@@ -22,16 +24,17 @@ type Application interface {
 	GetAllEvents(ctx context.Context, userID string) ([]app.Event, error)
 }
 
-func NewServer(logger *zap.Logger, app Application) *Server {
+func NewServer(config config.ServerConf, logger *zap.Logger, app Application) *Server {
 	return &Server{
-		log: logger,
-		app: app,
+		conf: config,
+		log:  logger,
+		app:  app,
 	}
 }
 
-func (s *Server) Start(addr string, ctx context.Context) error {
+func (s *Server) Start(ctx context.Context) error {
 	s.httpServer = &http.Server{
-		Addr:    addr,
+		Addr:    s.conf.Addr,
 		Handler: handler(s.log),
 	}
 
@@ -45,7 +48,7 @@ func (s *Server) Start(addr string, ctx context.Context) error {
 		}
 	}()
 
-	s.log.Info("listening", zap.String("addr", addr))
+	s.log.Info("listening", zap.String("addr", s.conf.Addr))
 
 	return s.httpServer.ListenAndServe()
 }
