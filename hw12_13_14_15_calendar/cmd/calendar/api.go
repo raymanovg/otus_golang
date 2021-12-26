@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/logger"
-	"log"
 	"os/signal"
 	"syscall"
 	"time"
@@ -31,8 +30,6 @@ var api = &cobra.Command{
 		if err != nil {
 			panic(fmt.Sprintf("failed to init conf: %s", err))
 		}
-
-		log.Fatal(config.Logger.Output)
 
 		logger, err := logger.NewZapLogger(config.Logger.Output, config.Logger.Level, config.Logger.DevMode)
 
