@@ -2,20 +2,14 @@ package app
 
 import (
 	"context"
+	"go.uber.org/zap"
 
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
 )
 
 type App struct {
-	log     Logger
+	logger  *zap.Logger
 	storage Storage
-}
-
-type Logger interface {
-	Info(string)
-	Warn(string)
-	Error(string)
-	Debug(string)
 }
 
 type Storage interface {
@@ -23,9 +17,9 @@ type Storage interface {
 	GetAllEvents(ctx context.Context, userID string) ([]storage.Event, error)
 }
 
-func New(logger Logger, storage Storage) *App {
+func New(logger *zap.Logger, storage Storage) *App {
 	return &App{
-		log:     logger,
+		logger:  logger,
 		storage: storage,
 	}
 }

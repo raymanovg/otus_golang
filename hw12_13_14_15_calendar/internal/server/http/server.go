@@ -2,7 +2,7 @@ package internalhttp
 
 import (
 	"context"
-	"fmt"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"time"
@@ -12,17 +12,9 @@ import (
 )
 
 type Server struct {
-	addr string
-	log  Logger
-	app  Application
-}
-
-type Logger interface {
-	Info(string)
-	Warn(string)
-	Error(string)
-	Debug(string)
-	Write(string)
+	log        *zap.Logger
+	app        Application
+	httpServer *http.Server
 }
 
 type Application interface {
@@ -30,38 +22,43 @@ type Application interface {
 	GetAllEvents(ctx context.Context, userID string) ([]app.Event, error)
 }
 
-func NewServer(addr string, logger Logger, app Application) *Server {
+func NewServer(logger *zap.Logger, app Application) *Server {
 	return &Server{
-		addr: addr,
-		log:  logger,
-		app:  app,
+		log: logger,
+		app: app,
 	}
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, "hello\n")
-		time.Sleep(time.Second)
-	})
-
-	server := &http.Server{
-		Addr:    s.addr,
-		Handler: middleware.NewLoggerMiddleware(s.log, mux),
+func (s *Server) Start(addr string, ctx context.Context) error {
+	s.httpServer = &http.Server{
+		Addr:    addr,
+		Handler: handler(s.log),
 	}
 
 	go func() {
 		<-ctx.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = server.Shutdown(ctx)
+		err := s.Stop(ctx)
+		if err != nil {
+			s.log.Error("failed to stop server")
+		}
 	}()
 
-	s.log.Info(fmt.Sprintf("Listening %s", s.addr))
+	s.log.Info("listening", zap.String("addr", addr))
 
-	return server.ListenAndServe()
+	return s.httpServer.ListenAndServe()
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-	return nil
+	return s.httpServer.Shutdown(ctx)
+}
+
+func handler(logger *zap.Logger) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "hello\n")
+	})
+
+	return middleware.NewLoggerMiddleware(logger, mux)
 }

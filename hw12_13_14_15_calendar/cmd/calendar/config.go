@@ -1,6 +1,9 @@
 package main
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
+	"github.com/spf13/viper"
+)
 
 // При желании конфигурацию можно вынести в internal/config.
 // Организация конфига в main принуждает нас сужать API компонентов, использовать
@@ -11,8 +14,9 @@ type Config struct {
 }
 
 type LoggerConf struct {
-	Level string
-	// TODO
+	Output  []string
+	Level   string
+	DevMode bool
 }
 
 type ServerConf struct {
@@ -23,15 +27,13 @@ func NewConfig(configFile string) (Config, error) {
 	viper.SetConfigFile(configFile)
 	err := viper.ReadInConfig()
 	if err != nil {
-		return Config{}, err
+		return Config{}, fmt.Errorf("failed to read config file: %w", err)
+	}
+	cfg := Config{}
+	err = viper.Unmarshal(&cfg)
+	if err != nil {
+		return Config{}, fmt.Errorf("failed to unmarshal config file: %w", err)
 	}
 
-	return Config{
-		Logger: LoggerConf{
-			Level: viper.GetString("logger.level"),
-		},
-		Server: ServerConf{
-			Addr: viper.GetString("server.addr"),
-		},
-	}, nil
+	return cfg, nil
 }

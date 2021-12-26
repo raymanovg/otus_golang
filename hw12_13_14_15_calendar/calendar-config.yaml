@@ -1,4 +1,6 @@
 logger:
+  output: stderr
   level: debug
+  devMode: true
 server:
   addr: ":8080"

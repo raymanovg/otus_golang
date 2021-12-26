@@ -3,17 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/logger"
+	"log"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/app"
-	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/logger"
 	internalhttp "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/server/http"
 	memorystorage "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage/memory"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var configFile string
@@ -28,35 +29,32 @@ var api = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config, err := NewConfig(configFile)
 		if err != nil {
-			panic(fmt.Sprintf("unable to init conf: %s", err))
+			panic(fmt.Sprintf("failed to init conf: %s", err))
 		}
-		logg := logger.New(os.Stdout, config.Logger.Level)
+
+		log.Fatal(config.Logger.Output)
+
+		logger, err := logger.NewZapLogger(config.Logger.Output, config.Logger.Level, config.Logger.DevMode)
 
 		storage := memorystorage.New()
-		calendar := app.New(logg, storage)
-
-		server := internalhttp.NewServer(config.Server.Addr, logg, calendar)
+		calendar := app.New(logger, storage)
+		server := internalhttp.NewServer(logger, calendar)
 
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 		defer cancel()
 
 		go func() {
 			<-ctx.Done()
-
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 			defer cancel()
 
 			if err := server.Stop(ctx); err != nil {
-				logg.Error("failed to stop http server: " + err.Error())
+				logger.Error("failed to stop http server: " + err.Error())
 			}
 		}()
 
-		logg.Info("calendar api is running...")
-
-		if err := server.Start(ctx); err != nil {
-			logg.Error("failed to start http server: " + err.Error())
-			cancel()
-			os.Exit(1) //nolint:gocritic
+		if err := server.Start(config.Server.Addr, ctx); err != nil {
+			logger.Error("failed to start http server", zap.Error(err))
 		}
 	},
 }
