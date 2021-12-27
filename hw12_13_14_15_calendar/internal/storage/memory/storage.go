@@ -44,7 +44,15 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 	return nil
 }
 
-func (s *Storage) GetAllEvents(ctx context.Context, userID string) ([]storage.Event, error) {
+func (s *Storage) DeleteEvent(ctx context.Context, eventID int64) error {
+	return nil
+}
+
+func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
+	return nil
+}
+
+func (s *Storage) GetAllEvents(ctx context.Context, userID int64) ([]storage.Event, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var events []storage.Event

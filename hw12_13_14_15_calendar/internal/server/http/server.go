@@ -21,7 +21,9 @@ type Server struct {
 
 type Application interface {
 	CreateEvent(ctx context.Context, event app.Event) error
-	GetAllEvents(ctx context.Context, userID string) ([]app.Event, error)
+	DeleteEvent(ctx context.Context, eventID int64) error
+	UpdateEvent(ctx context.Context, event app.Event) error
+	GetAllEvents(ctx context.Context, userID int64) ([]app.Event, error)
 }
 
 func NewServer(config config.ServerConf, logger *zap.Logger, app Application) *Server {

@@ -8,7 +8,7 @@ type Event struct {
 	Desc      string
 	Time      time.Time
 	Duration  time.Duration
-	UserID    string
+	UserID    int64
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
