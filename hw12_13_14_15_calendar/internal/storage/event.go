@@ -6,7 +6,7 @@ type Event struct {
 	ID        string
 	Title     string
 	Desc      string
-	EventTime time.Time
+	Time      time.Time
 	Duration  time.Duration
 	UserID    string
 	CreatedAt time.Time

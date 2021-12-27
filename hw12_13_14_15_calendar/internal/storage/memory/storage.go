@@ -30,7 +30,7 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 			if e.ID == event.ID {
 				return ErrEventIDUsed
 			}
-			if e.UserID == event.UserID && e.EventTime == event.EventTime {
+			if e.UserID == event.UserID && e.Time == event.Time {
 				return ErrEventTimeBusy
 			}
 		}

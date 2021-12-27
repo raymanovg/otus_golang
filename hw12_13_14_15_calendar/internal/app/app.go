@@ -26,12 +26,12 @@ func New(logger *zap.Logger, storage Storage) *App {
 
 func (a *App) CreateEvent(ctx context.Context, event Event) error {
 	return a.storage.CreateEvent(ctx, storage.Event{
-		ID:        event.ID,
-		Title:     event.Title,
-		Desc:      event.Desc,
-		EventTime: event.EventTime,
-		Duration:  event.Duration,
-		UserID:    event.UserID,
+		ID:       event.ID,
+		Title:    event.Title,
+		Desc:     event.Desc,
+		Time:     event.Time,
+		Duration: event.Duration,
+		UserID:   event.UserID,
 	})
 }
 

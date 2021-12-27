@@ -5,6 +5,18 @@ VERSION?=$(shell git log --date=short --pretty=format:'%ad-%h' -n 1 | sed -E 's/
 
 LDFLAGS := -X github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config.VERSION=$(VERSION)
 
+up:
+	docker-compose -f deployments/docker-compose.yaml up -d calendar
+
+down:
+	docker-compose -f deployments/docker-compose.yaml down
+
+migration-up:
+	docker-compose -f deployments/docker-compose.yaml up migration-up
+
+migration-down:
+	docker-compose -f deployments/docker-compose.yaml up migration-down
+
 build:
 	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/calendar
 
