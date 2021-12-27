@@ -3,7 +3,7 @@ package storage
 import "time"
 
 type Event struct {
-	ID        string
+	ID        int64
 	Title     string
 	Desc      string
 	Time      time.Time

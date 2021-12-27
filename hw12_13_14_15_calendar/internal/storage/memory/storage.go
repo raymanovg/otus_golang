@@ -45,11 +45,43 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 }
 
 func (s *Storage) DeleteEvent(ctx context.Context, eventID int64) error {
-	return nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i, event := range s.events {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			if eventID == event.ID {
+				s.events = append(s.events[:i], s.events[i+1:]...)
+				return nil
+			}
+		}
+	}
+	return errors.New("not found")
 }
 
 func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
-	return nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i, e := range s.events {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			if event.ID == e.ID {
+				s.events[i].Title = event.Title
+				s.events[i].Desc = event.Desc
+				s.events[i].Time = event.Time
+				s.events[i].Duration = event.Duration
+				s.events[i].UpdatedAt = time.Now()
+				return nil
+			}
+		}
+	}
+	return errors.New("not found")
 }
 
 func (s *Storage) GetAllEvents(ctx context.Context, userID int64) ([]storage.Event, error) {
