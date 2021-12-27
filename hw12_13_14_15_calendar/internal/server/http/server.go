@@ -59,7 +59,7 @@ func (s *Server) Stop(ctx context.Context) error {
 
 func handler(logger *zap.Logger) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, "hello\n")
 	})
 
