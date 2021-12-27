@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/logger"
 	httpServer "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/server/http"
 	memoryStorage "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage/memory"
+	sqlStorage "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage/sql"
 	"go.uber.org/zap"
 )
 
@@ -27,12 +29,16 @@ func main() {
 	flag.Parse()
 	conf, err := config.NewConfig(configFile)
 	if err != nil {
-		fmt.Printf("failed to init conf: %s", err)
+		fmt.Printf("failed to init conf: %s\n", err)
+		os.Exit(1)
+	}
+	storage, err := getStorage(conf.App.Storage)
+	if err != nil {
+		fmt.Printf("failed to get storage: %s\n", err)
 		os.Exit(1)
 	}
 
 	zapLogger, err := logger.NewZapLogger(conf.Logger)
-	storage := memoryStorage.New()
 	calendar := app.New(zapLogger, storage)
 	server := httpServer.NewServer(conf.Server, zapLogger, calendar)
 
@@ -52,4 +58,14 @@ func main() {
 	if err := server.Start(ctx); err != nil {
 		zapLogger.Error("failed to start http server", zap.Error(err))
 	}
+}
+
+func getStorage(storageName string) (app.Storage, error) {
+	if storageName == "sql" {
+		return sqlStorage.New(), nil
+	}
+	if storageName == "memory" {
+		return memoryStorage.New(), nil
+	}
+	return nil, errors.New("unknown storage: " + storageName)
 }

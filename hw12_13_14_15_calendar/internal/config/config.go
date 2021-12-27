@@ -10,6 +10,7 @@ var VERSION = "UNKNOWN"
 type Config struct {
 	Logger LoggerConf
 	Server ServerConf
+	App    AppConf
 }
 
 type LoggerConf struct {
@@ -20,6 +21,10 @@ type LoggerConf struct {
 
 type ServerConf struct {
 	Addr string
+}
+
+type AppConf struct {
+	Storage string
 }
 
 func NewConfig(configFile string) (Config, error) {

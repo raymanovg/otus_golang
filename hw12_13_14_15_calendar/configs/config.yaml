@@ -1,3 +1,5 @@
+app:
+  storage: sql
 logger:
   output: stderr
   level: debug
