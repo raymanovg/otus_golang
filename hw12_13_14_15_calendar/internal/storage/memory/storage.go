@@ -15,11 +15,19 @@ var (
 )
 
 type Storage struct {
-	events []storage.Event
-	mu     sync.RWMutex
+	lastEventId int64
+	events      []storage.Event
+	mu          sync.RWMutex
 }
 
 func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
+	if err := storage.Validate(event); err != nil {
+		return err
+	}
+	if !s.IsEventTimeBusy(event) {
+		return ErrEventTimeBusy
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, e := range s.events {
@@ -30,16 +38,15 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 			if e.ID == event.ID {
 				return ErrEventIDUsed
 			}
-			if e.UserID == event.UserID && e.Time == event.Time {
-				return ErrEventTimeBusy
-			}
 		}
 	}
 
+	event.ID = s.lastEventId + 1
 	event.CreatedAt = time.Now()
 	event.UpdatedAt = time.Now()
 
 	s.events = append(s.events, event)
+	s.lastEventId++
 
 	return nil
 }
@@ -63,6 +70,13 @@ func (s *Storage) DeleteEvent(ctx context.Context, eventID int64) error {
 }
 
 func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
+	if err := storage.Validate(event); err != nil {
+		return err
+	}
+	if !s.IsEventTimeBusy(event) {
+		return ErrEventTimeBusy
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -84,7 +98,7 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 	return errors.New("not found")
 }
 
-func (s *Storage) GetAllEvents(ctx context.Context, userID int64) ([]storage.Event, error) {
+func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]storage.Event, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var events []storage.Event
@@ -97,9 +111,28 @@ func (s *Storage) GetAllEvents(ctx context.Context, userID int64) ([]storage.Eve
 				events = append(events, e)
 			}
 		}
-
 	}
 	return events, nil
+}
+
+func (s *Storage) GetAllEvents(ctx context.Context) ([]storage.Event, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.events, nil
+}
+
+func (s *Storage) IsEventTimeBusy(event storage.Event) bool {
+	begin := event.Time
+	end := event.Time.Add(event.Duration)
+	for _, e := range s.events {
+		if e.UserID != event.UserID {
+			continue
+		}
+		if !end.Before(e.Time) || !begin.After(e.Time.Add(e.Duration)) {
+			return false
+		}
+	}
+	return true
 }
 
 func New() *Storage {
