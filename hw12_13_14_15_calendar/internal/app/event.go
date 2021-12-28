@@ -3,7 +3,7 @@ package app
 import "time"
 
 type Event struct {
-	ID       string
+	ID       int64
 	Title    string
 	Desc     string
 	UserID   int64
