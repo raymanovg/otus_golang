@@ -128,7 +128,10 @@ func (s *Storage) IsEventTimeBusy(event storage.Event) bool {
 		if e.UserID != event.UserID {
 			continue
 		}
-		if !end.Before(e.Time) || !begin.After(e.Time.Add(e.Duration)) {
+		if end.Before(e.Time) {
+			continue
+		}
+		if !begin.After(e.Time.Add(e.Duration)) {
 			return false
 		}
 	}
