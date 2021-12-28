@@ -16,7 +16,7 @@ type Storage interface {
 	CreateEvent(ctx context.Context, event storage.Event) error
 	DeleteEvent(ctx context.Context, eventID int64) error
 	UpdateEvent(ctx context.Context, event storage.Event) error
-	GetAllEvents(ctx context.Context, userID int64) ([]storage.Event, error)
+	GetAllEventsOfUser(ctx context.Context, userID int64) ([]storage.Event, error)
 }
 
 func New(logger *zap.Logger, storage Storage) *App {
@@ -45,8 +45,8 @@ func (a *App) UpdateEvent(ctx context.Context, event Event) error {
 	return nil
 }
 
-func (a *App) GetAllEvents(ctx context.Context, userID int64) ([]Event, error) {
-	eventsInStorage, err := a.storage.GetAllEvents(ctx, userID)
+func (a *App) GetAllEventsOfUser(ctx context.Context, userID int64) ([]Event, error) {
+	eventsInStorage, err := a.storage.GetAllEventsOfUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
