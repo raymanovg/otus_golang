@@ -24,7 +24,7 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 	if err := storage.Validate(event); err != nil {
 		return err
 	}
-	if !s.IsEventTimeBusy(event) {
+	if !s.IsEventTimeBusy(ctx, event) {
 		return ErrEventTimeBusy
 	}
 
@@ -73,7 +73,7 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 	if err := storage.Validate(event); err != nil {
 		return err
 	}
-	if !s.IsEventTimeBusy(event) {
+	if !s.IsEventTimeBusy(ctx, event) {
 		return ErrEventTimeBusy
 	}
 
@@ -118,21 +118,30 @@ func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]stora
 func (s *Storage) GetAllEvents(ctx context.Context) ([]storage.Event, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	return s.events, nil
 }
 
-func (s *Storage) IsEventTimeBusy(event storage.Event) bool {
+func (s *Storage) IsEventTimeBusy(ctx context.Context, event storage.Event) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	begin := event.Time
 	end := event.Time.Add(event.Duration)
 	for _, e := range s.events {
-		if e.UserID != event.UserID {
-			continue
-		}
-		if end.Before(e.Time) {
-			continue
-		}
-		if !begin.After(e.Time.Add(e.Duration)) {
+		select {
+		case <-ctx.Done():
 			return false
+		default:
+			if e.UserID != event.UserID {
+				continue
+			}
+			if end.Before(e.Time) {
+				continue
+			}
+			if !begin.After(e.Time.Add(e.Duration)) {
+				return false
+			}
 		}
 	}
 	return true
