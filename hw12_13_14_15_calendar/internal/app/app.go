@@ -18,7 +18,6 @@ type Storage interface {
 	UpdateEvent(ctx context.Context, event storage.Event) error
 	GetAllEventsOfUser(ctx context.Context, userID int64) ([]storage.Event, error)
 	GetAllEvents(ctx context.Context) ([]storage.Event, error)
-	IsEventTimeBusy(ctx context.Context, event storage.Event) bool
 }
 
 func New(logger *zap.Logger, storage Storage) *App {
