@@ -24,9 +24,6 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 	if err := storage.Validate(event); err != nil {
 		return err
 	}
-	if !s.IsEventTimeBusy(ctx, event) {
-		return ErrEventTimeBusy
-	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -37,6 +34,9 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 		default:
 			if e.ID == event.ID {
 				return ErrEventIDUsed
+			}
+			if !s.IsEventTimeBusy(e, event) {
+				return ErrEventTimeBusy
 			}
 		}
 	}
@@ -73,9 +73,6 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 	if err := storage.Validate(event); err != nil {
 		return err
 	}
-	if !s.IsEventTimeBusy(ctx, event) {
-		return ErrEventTimeBusy
-	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -85,22 +82,27 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 		case <-ctx.Done():
 			return nil
 		default:
-			if event.ID == e.ID {
-				s.events[i].Title = event.Title
-				s.events[i].Desc = event.Desc
-				s.events[i].Time = event.Time
-				s.events[i].Duration = event.Duration
-				s.events[i].UpdatedAt = time.Now()
-				return nil
+			if event.ID != e.ID {
+				continue
 			}
+			if !s.IsEventTimeBusy(e, event) {
+				return ErrEventTimeBusy
+			}
+
+			s.events[i].Title = event.Title
+			s.events[i].Desc = event.Desc
+			s.events[i].Time = event.Time
+			s.events[i].Duration = event.Duration
+			s.events[i].UpdatedAt = time.Now()
+			return nil
 		}
 	}
 	return errors.New("not found")
 }
 
 func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]storage.Event, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	var events []storage.Event
 	for _, e := range s.events {
 		select {
@@ -116,33 +118,24 @@ func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]stora
 }
 
 func (s *Storage) GetAllEvents(ctx context.Context) ([]storage.Event, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return s.events, nil
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	select {
+	case <-ctx.Done():
+		return nil, nil
+	default:
+		return s.events, nil
+	}
 }
 
-func (s *Storage) IsEventTimeBusy(ctx context.Context, event storage.Event) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	begin := event.Time
-	end := event.Time.Add(event.Duration)
-	for _, e := range s.events {
-		select {
-		case <-ctx.Done():
-			return false
-		default:
-			if e.UserID != event.UserID {
-				continue
-			}
-			if end.Before(e.Time) {
-				continue
-			}
-			if !begin.After(e.Time.Add(e.Duration)) {
-				return false
-			}
-		}
+func (s *Storage) IsEventTimeBusy(savedEvent storage.Event, newEvent storage.Event) bool {
+	begin := newEvent.Time
+	end := newEvent.Time.Add(newEvent.Duration)
+	if savedEvent.UserID != newEvent.UserID || end.Before(savedEvent.Time) {
+		return true
+	}
+	if !begin.After(savedEvent.Time.Add(savedEvent.Duration)) {
+		return false
 	}
 	return true
 }
