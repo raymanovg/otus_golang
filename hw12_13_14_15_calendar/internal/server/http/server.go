@@ -2,14 +2,17 @@ package internalhttp
 
 import (
 	"context"
-	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
+	"fmt"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/app"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/server/http/middleware"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
+	sqlStorage "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage/sql"
 )
 
 type Server struct {
@@ -63,7 +66,36 @@ func (s *Server) Stop(ctx context.Context) error {
 func handler(logger *zap.Logger) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, "hello\n")
+		st := sqlStorage.New()
+		err := st.Connect(context.Background())
+		if err != nil {
+			_, _ = io.WriteString(w, err.Error())
+			return
+		} else {
+			_, _ = io.WriteString(w, "connected")
+		}
+
+		event := storage.Event{
+			Title:  "foo",
+			Desc:   "foo desc",
+			UserID: 2,
+			Begin:  time.Now().Add(1 * time.Hour),
+			End:    time.Now().Add(2 * time.Hour),
+		}
+
+		err = st.CreateEvent(context.Background(), event)
+		if err != nil {
+			_, _ = io.WriteString(w, err.Error())
+			return
+		}
+
+		events, err := st.GetAllEvents(context.Background())
+		if err != nil {
+			_, _ = io.WriteString(w, err.Error())
+			return
+		}
+
+		fmt.Println(events)
 	})
 
 	return middleware.NewLoggerMiddleware(logger, mux)

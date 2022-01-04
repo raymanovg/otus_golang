@@ -11,6 +11,8 @@ up:
 down:
 	docker-compose -f deployments/docker-compose.yaml down
 
+rebuild: build-img up
+
 migration-up:
 	docker-compose -f deployments/docker-compose.yaml up migration-up
 

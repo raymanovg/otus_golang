@@ -22,33 +22,33 @@ func TestCreateEvent(t *testing.T) {
 			{
 				name: "success event create one",
 				event: storage.Event{
-					Title:    "event one",
-					Desc:     "event one",
-					Time:     time.Now(),
-					Duration: time.Hour,
-					UserID:   1,
+					Title:  "event one",
+					Desc:   "event one",
+					Begin:  time.Now(),
+					End:    time.Now().Add(time.Hour),
+					UserID: 1,
 				},
 				err: nil,
 			},
 			{
 				name: "success event create two",
 				event: storage.Event{
-					Title:    "event two",
-					Desc:     "event two",
-					Time:     time.Now().Add(2 * time.Hour),
-					Duration: time.Hour,
-					UserID:   1,
+					Title:  "event two",
+					Desc:   "event two",
+					Begin:  time.Now().Add(2 * time.Hour),
+					End:    time.Now().Add(3 * time.Hour),
+					UserID: 1,
 				},
 				err: nil,
 			},
 			{
 				name: "success event create three",
 				event: storage.Event{
-					Title:    "event three",
-					Desc:     "event three",
-					Time:     time.Now(),
-					Duration: time.Hour,
-					UserID:   2,
+					Title:  "event three",
+					Desc:   "event three",
+					Begin:  time.Now(),
+					End:    time.Now().Add(time.Hour),
+					UserID: 2,
 				},
 				err: nil,
 			},
@@ -68,52 +68,52 @@ func TestCreateEvent(t *testing.T) {
 			{
 				name: "invalid title",
 				event: storage.Event{
-					Title:    "",
-					Desc:     "event one",
-					Time:     time.Now(),
-					Duration: time.Hour,
-					UserID:   1,
+					Title:  "",
+					Desc:   "event one",
+					Begin:  time.Now(),
+					End:    time.Now().Add(time.Hour),
+					UserID: 1,
 				},
 				err: storage.ErrInvalidEventTitle,
 			},
 			{
 				name: "invalid desc",
 				event: storage.Event{
-					Title:    "event one",
-					Desc:     "",
-					Time:     time.Now(),
-					Duration: time.Hour,
-					UserID:   2,
+					Title:  "event one",
+					Desc:   "",
+					Begin:  time.Now(),
+					End:    time.Now().Add(time.Hour),
+					UserID: 2,
 				},
 				err: storage.ErrInvalidEventDesc,
 			},
 			{
 				name: "invalid time",
 				event: storage.Event{
-					Title:    "event one",
-					Desc:     "event desc",
-					Duration: time.Hour,
-					UserID:   3,
+					Title:  "event one",
+					Desc:   "event desc",
+					End:    time.Now().Add(time.Hour),
+					UserID: 3,
 				},
-				err: storage.ErrInvalidEventTime,
+				err: storage.ErrInvalidEventBeginTime,
 			},
 			{
 				name: "invalid duration",
 				event: storage.Event{
 					Title:  "event one",
 					Desc:   "event desc",
-					Time:   time.Now(),
+					Begin:  time.Now(),
 					UserID: 4,
 				},
-				err: storage.ErrInvalidEventDuration,
+				err: storage.ErrInvalidEventEndTime,
 			},
 			{
 				name: "invalid user id",
 				event: storage.Event{
-					Title:    "event one",
-					Desc:     "event desc",
-					Time:     time.Now(),
-					Duration: time.Hour,
+					Title: "event one",
+					Desc:  "event desc",
+					Begin: time.Now(),
+					End:   time.Now().Add(time.Hour),
 				},
 				err: storage.ErrInvalidEventUserID,
 			},
@@ -130,29 +130,29 @@ func TestCreateEvent(t *testing.T) {
 	t.Run("event time busy", func(t *testing.T) {
 		st := New()
 		err := st.CreateEvent(context.Background(), storage.Event{
-			Title:    "event one",
-			Desc:     "event one",
-			Time:     time.Date(2021, 12, 28, 16, 0, 0, 0, time.Local),
-			Duration: time.Hour,
-			UserID:   1,
+			Title:  "event one",
+			Desc:   "event one",
+			Begin:  time.Date(2021, 12, 28, 16, 0, 0, 0, time.Local),
+			End:    time.Date(2021, 12, 28, 17, 0, 0, 0, time.Local),
+			UserID: 1,
 		})
 		require.NoError(t, err)
 
 		err = st.CreateEvent(context.Background(), storage.Event{
-			Title:    "event two",
-			Desc:     "event two",
-			Time:     time.Date(2021, 12, 28, 16, 30, 0, 0, time.Local),
-			Duration: time.Hour,
-			UserID:   1,
+			Title:  "event two",
+			Desc:   "event two",
+			Begin:  time.Date(2021, 12, 28, 16, 30, 0, 0, time.Local),
+			End:    time.Date(2021, 12, 28, 17, 30, 0, 0, time.Local),
+			UserID: 1,
 		})
 		require.ErrorIs(t, err, ErrEventTimeBusy)
 
 		err = st.CreateEvent(context.Background(), storage.Event{
-			Title:    "event three",
-			Desc:     "event three",
-			Time:     time.Date(2021, 12, 28, 15, 30, 0, 0, time.Local),
-			Duration: time.Hour,
-			UserID:   1,
+			Title:  "event three",
+			Desc:   "event three",
+			Begin:  time.Date(2021, 12, 28, 15, 30, 0, 0, time.Local),
+			End:    time.Date(2021, 12, 28, 16, 30, 0, 0, time.Local),
+			UserID: 1,
 		})
 		require.ErrorIs(t, err, ErrEventTimeBusy)
 	})
@@ -163,11 +163,11 @@ func TestGetAllEvents(t *testing.T) {
 	total := 100
 	for i := 1; i <= total; i++ {
 		err := st.CreateEvent(context.Background(), storage.Event{
-			Title:    "event title",
-			Desc:     "event desc",
-			Time:     time.Now(),
-			Duration: time.Hour,
-			UserID:   int64(i),
+			Title:  "event title",
+			Desc:   "event desc",
+			Begin:  time.Now(),
+			End:    time.Now().Add(1 * time.Hour),
+			UserID: int64(i),
 		})
 		require.NoError(t, err)
 	}

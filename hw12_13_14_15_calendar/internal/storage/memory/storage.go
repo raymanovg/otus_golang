@@ -91,8 +91,8 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 
 			s.events[i].Title = event.Title
 			s.events[i].Desc = event.Desc
-			s.events[i].Time = event.Time
-			s.events[i].Duration = event.Duration
+			s.events[i].Begin = event.Begin
+			s.events[i].End = event.End
 			s.events[i].UpdatedAt = time.Now()
 			return nil
 		}
@@ -129,12 +129,13 @@ func (s *Storage) GetAllEvents(ctx context.Context) ([]storage.Event, error) {
 }
 
 func (s *Storage) IsEventTimeBusy(savedEvent storage.Event, newEvent storage.Event) bool {
-	begin := newEvent.Time
-	end := newEvent.Time.Add(newEvent.Duration)
-	if savedEvent.UserID != newEvent.UserID || end.Before(savedEvent.Time) {
+	begin := newEvent.Begin
+	end := newEvent.End
+
+	if savedEvent.UserID != newEvent.UserID || end.Before(savedEvent.Begin) {
 		return true
 	}
-	if !begin.After(savedEvent.Time.Add(savedEvent.Duration)) {
+	if !begin.After(savedEvent.End) {
 		return false
 	}
 	return true
