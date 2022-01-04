@@ -83,12 +83,7 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 		return errors.New("event time is busy")
 	}
 
-	idBusy, err := s.IsEventTimeBusy(ctx, event)
-	if idBusy {
-		return fmt.Errorf("event time is busy")
-	}
-
-	_, err = s.db.ExecContext(ctx,
+	_, err := s.db.ExecContext(ctx,
 		`UPDATE events SET "title"=$1, "description"=$2, "begin"=$3, "end"=$4, "updated_at"=$5 WHERE id=$6`,
 		event.Title,
 		event.Desc,
@@ -106,7 +101,7 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]storage.Event, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT "id", "title", "description", "begin", "end", "user_id", "created_at", "updated_at"
-		FROM events WHERE user_id=$1`,
+		FROM events WHERE "user_id" = $1`,
 		userID,
 	)
 	if err != nil {
@@ -130,8 +125,8 @@ func (s *Storage) GetAllEvents(ctx context.Context) ([]storage.Event, error) {
 }
 
 func (s *Storage) IsEventTimeBusy(ctx context.Context, event storage.Event) (bool, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT * FROM events WHERE
-      user_id=$1 AND "begin" <= $2 AND "end" >= $3`, event.UserID, event.End, event.Begin)
+	row := s.db.QueryRowContext(ctx, `SELECT * FROM "events" WHERE
+      "user_id" = $1 AND "begin" <= $2 AND "end" >= $3`, event.UserID, event.End, event.Begin)
 
 	var id int64
 	err := row.Scan(&id)
