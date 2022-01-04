@@ -2,13 +2,19 @@ package app
 
 import (
 	"context"
-	"go.uber.org/zap"
 
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
 )
 
+type Logger interface {
+	Debug(args ...interface{})
+	Info(args ...interface{})
+	Warn(args ...interface{})
+	Error(args ...interface{})
+}
+
 type App struct {
-	logger  *zap.Logger
+	logger  Logger
 	storage Storage
 }
 
@@ -20,7 +26,7 @@ type Storage interface {
 	GetAllEvents(ctx context.Context) ([]storage.Event, error)
 }
 
-func New(logger *zap.Logger, storage Storage) *App {
+func New(logger Logger, storage Storage) *App {
 	return &App{
 		logger:  logger,
 		storage: storage,
@@ -39,11 +45,17 @@ func (a *App) CreateEvent(ctx context.Context, event Event) error {
 }
 
 func (a *App) DeleteEvent(ctx context.Context, eventID int64) error {
-	return nil
+	return a.storage.DeleteEvent(ctx, eventID)
 }
 
 func (a *App) UpdateEvent(ctx context.Context, event Event) error {
-	return nil
+	return a.storage.UpdateEvent(ctx, storage.Event{
+		ID:    event.ID,
+		Title: event.Title,
+		Desc:  event.Desc,
+		Begin: event.Begin,
+		End:   event.End,
+	})
 }
 
 func (a *App) GetAllEventsOfUser(ctx context.Context, userID int64) ([]Event, error) {
@@ -57,7 +69,13 @@ func (a *App) GetAllEventsOfUser(ctx context.Context, userID int64) ([]Event, er
 		case <-ctx.Done():
 			return nil, nil
 		default:
-			events = append(events, Event{ID: event.ID})
+			events = append(events, Event{
+				ID:    event.ID,
+				Title: event.Title,
+				Desc:  event.Desc,
+				Begin: event.Begin,
+				End:   event.End,
+			})
 		}
 	}
 	return events, nil
@@ -74,7 +92,13 @@ func (a *App) GetAllEvents(ctx context.Context) ([]Event, error) {
 		case <-ctx.Done():
 			return nil, nil
 		default:
-			events = append(events, Event{ID: event.ID})
+			events = append(events, Event{
+				ID:    event.ID,
+				Title: event.Title,
+				Desc:  event.Desc,
+				Begin: event.Begin,
+				End:   event.End,
+			})
 		}
 	}
 	return events, nil

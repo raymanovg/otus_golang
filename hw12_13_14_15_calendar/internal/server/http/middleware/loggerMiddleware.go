@@ -1,34 +1,36 @@
 package middleware
 
 import (
-	"go.uber.org/zap"
+	"fmt"
 	"net"
 	"net/http"
 	"time"
 )
 
+type Logger interface {
+	Debug(args ...interface{})
+	Info(args ...interface{})
+	Warn(args ...interface{})
+	Error(args ...interface{})
+}
+
 type LoggerMiddleware struct {
-	logger *zap.Logger
+	logger Logger
 	next   http.Handler
 }
 
 func (l *LoggerMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	l.next.ServeHTTP(w, r)
-	latency := time.Now().Sub(now)
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	latency := time.Now().Sub(now)
 
-	l.logger.Debug(
-		"new request",
-		zap.String("ip", ip),
-		zap.String("method", r.Method),
-		zap.String("path", r.URL.Path),
-		zap.String("proto", r.Proto),
-		zap.Int64("latency", int64(latency.Seconds())),
-		zap.String("user-agent", r.UserAgent()),
-	)
+	l.logger.Debug(fmt.Sprintf(
+		"ip: %s, method: %s, path: %s, proto: %s, latency: %d, user-agent: %s",
+		ip, r.Method, r.URL.Path, r.Proto, latency, r.UserAgent(),
+	))
 }
 
-func NewLoggerMiddleware(logger *zap.Logger, next http.Handler) http.Handler {
+func NewLoggerMiddleware(logger Logger, next http.Handler) http.Handler {
 	return &LoggerMiddleware{logger, next}
 }

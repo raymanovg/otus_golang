@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func NewZapLogger(conf config.LoggerConf) (*zap.Logger, error) {
+func NewZapLogger(conf config.LoggerConf) (*zap.SugaredLogger, error) {
 	atomicLevel := zap.NewAtomicLevel()
 	err := atomicLevel.UnmarshalText([]byte(conf.Level))
 	if err != nil {
@@ -36,5 +36,5 @@ func NewZapLogger(conf config.LoggerConf) (*zap.Logger, error) {
 		return nil, fmt.Errorf("failed to build logger from config: %w", err)
 	}
 
-	return logger.With(zap.String("version", config.VERSION)), nil
+	return logger.With(zap.String("version", config.VERSION)).Sugar(), nil
 }
