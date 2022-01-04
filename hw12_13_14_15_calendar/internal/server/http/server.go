@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/app"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/server/http/middleware"
@@ -17,11 +15,11 @@ import (
 	sqlStorage "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage/sql"
 )
 
-type Server struct {
-	conf       config.ServerConf
-	log        *zap.Logger
-	app        Application
-	httpServer *http.Server
+type Logger interface {
+	Debug(args ...interface{})
+	Info(args ...interface{})
+	Warn(args ...interface{})
+	Error(args ...interface{})
 }
 
 type Application interface {
@@ -32,7 +30,14 @@ type Application interface {
 	GetAllEventsOfUser(ctx context.Context, userID int64) ([]app.Event, error)
 }
 
-func NewServer(config config.ServerConf, logger *zap.Logger, app Application) *Server {
+type Server struct {
+	conf       config.ServerConf
+	log        Logger
+	app        Application
+	httpServer *http.Server
+}
+
+func NewServer(config config.ServerConf, logger Logger, app Application) *Server {
 	return &Server{
 		conf: config,
 		log:  logger,
@@ -56,7 +61,7 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 	}()
 
-	s.log.Info("listening", zap.String("addr", s.conf.Addr))
+	s.log.Info(fmt.Sprintf("listening: %s", s.conf.Addr))
 
 	return s.httpServer.ListenAndServe()
 }
@@ -65,7 +70,7 @@ func (s *Server) Stop(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
-func handler(logger *zap.Logger) http.Handler {
+func handler(logger Logger) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/create", func(w http.ResponseWriter, r *http.Request) {
 		st := sqlStorage.New(config.SQLStorage{
@@ -78,7 +83,7 @@ func handler(logger *zap.Logger) http.Handler {
 			_, _ = io.WriteString(w, err.Error())
 			return
 		} else {
-			_, _ = io.WriteString(w, "connected")
+			_, _ = io.WriteString(w, "connected \n")
 		}
 
 		title := r.FormValue("title")
@@ -110,7 +115,7 @@ func handler(logger *zap.Logger) http.Handler {
 			_, _ = io.WriteString(w, err.Error())
 			return
 		}
-		_, _ = io.WriteString(w, "success")
+		_, _ = io.WriteString(w, "success \n")
 	})
 
 	mux.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +129,7 @@ func handler(logger *zap.Logger) http.Handler {
 			_, _ = io.WriteString(w, err.Error())
 			return
 		} else {
-			_, _ = io.WriteString(w, "connected")
+			_, _ = io.WriteString(w, "connected \n")
 		}
 
 		title := r.FormValue("title")
@@ -157,7 +162,7 @@ func handler(logger *zap.Logger) http.Handler {
 			_, _ = io.WriteString(w, err.Error())
 			return
 		}
-		_, _ = io.WriteString(w, "success")
+		_, _ = io.WriteString(w, "success \n")
 	})
 
 	mux.HandleFunc("/delete", func(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +176,7 @@ func handler(logger *zap.Logger) http.Handler {
 			_, _ = io.WriteString(w, err.Error())
 			return
 		} else {
-			_, _ = io.WriteString(w, "connected")
+			_, _ = io.WriteString(w, "connected \n")
 		}
 
 		id, _ := strconv.Atoi(r.FormValue("id"))
@@ -182,7 +187,7 @@ func handler(logger *zap.Logger) http.Handler {
 			return
 		}
 
-		_, _ = io.WriteString(w, "success")
+		_, _ = io.WriteString(w, "success \n")
 	})
 
 	mux.HandleFunc("/user-events", func(w http.ResponseWriter, r *http.Request) {
@@ -231,7 +236,6 @@ func handler(logger *zap.Logger) http.Handler {
 			_, _ = io.WriteString(w, err.Error())
 			return
 		}
-
 		for _, event := range events {
 			fmt.Fprintf(w, "%v \n", event)
 		}
