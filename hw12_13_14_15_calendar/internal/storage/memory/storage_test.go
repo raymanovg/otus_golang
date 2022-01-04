@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
 )
 
@@ -54,7 +55,7 @@ func TestCreateEvent(t *testing.T) {
 			},
 		}
 
-		st := New()
+		st := New(config.Memory{})
 		for _, c := range cases {
 			t.Run(c.name, func(t *testing.T) {
 				err := st.CreateEvent(context.Background(), c.event)
@@ -77,17 +78,6 @@ func TestCreateEvent(t *testing.T) {
 				err: storage.ErrInvalidEventTitle,
 			},
 			{
-				name: "invalid desc",
-				event: storage.Event{
-					Title:  "event one",
-					Desc:   "",
-					Begin:  time.Now(),
-					End:    time.Now().Add(time.Hour),
-					UserID: 2,
-				},
-				err: storage.ErrInvalidEventDesc,
-			},
-			{
 				name: "invalid time",
 				event: storage.Event{
 					Title:  "event one",
@@ -95,7 +85,7 @@ func TestCreateEvent(t *testing.T) {
 					End:    time.Now().Add(time.Hour),
 					UserID: 3,
 				},
-				err: storage.ErrInvalidEventBeginTime,
+				err: storage.ErrInvalidEventTime,
 			},
 			{
 				name: "invalid duration",
@@ -105,7 +95,7 @@ func TestCreateEvent(t *testing.T) {
 					Begin:  time.Now(),
 					UserID: 4,
 				},
-				err: storage.ErrInvalidEventEndTime,
+				err: storage.ErrInvalidEventTime,
 			},
 			{
 				name: "invalid user id",
@@ -118,7 +108,7 @@ func TestCreateEvent(t *testing.T) {
 				err: storage.ErrInvalidEventUserID,
 			},
 		}
-		st := New()
+		st := New(config.Memory{})
 		for _, c := range cases {
 			t.Run(c.name, func(t *testing.T) {
 				err := st.CreateEvent(context.Background(), c.event)
@@ -128,7 +118,7 @@ func TestCreateEvent(t *testing.T) {
 	})
 
 	t.Run("event time busy", func(t *testing.T) {
-		st := New()
+		st := New(config.Memory{})
 		err := st.CreateEvent(context.Background(), storage.Event{
 			Title:  "event one",
 			Desc:   "event one",
@@ -159,7 +149,7 @@ func TestCreateEvent(t *testing.T) {
 }
 
 func TestGetAllEvents(t *testing.T) {
-	st := New()
+	st := New(config.Memory{})
 	total := 100
 	for i := 1; i <= total; i++ {
 		err := st.CreateEvent(context.Background(), storage.Event{

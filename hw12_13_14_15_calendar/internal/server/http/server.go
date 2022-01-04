@@ -3,10 +3,12 @@ package internalhttp
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/app"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
@@ -65,8 +67,12 @@ func (s *Server) Stop(ctx context.Context) error {
 
 func handler(logger *zap.Logger) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		st := sqlStorage.New()
+	mux.HandleFunc("/create", func(w http.ResponseWriter, r *http.Request) {
+		st := sqlStorage.New(config.SQLStorage{
+			DSN:          "postgres://calendar:calendar@postgres:5432/calendar?sslmode=disable",
+			MaxOpenConns: 2,
+			MaxIdleConns: 2,
+		})
 		err := st.Connect(context.Background())
 		if err != nil {
 			_, _ = io.WriteString(w, err.Error())
@@ -75,18 +81,149 @@ func handler(logger *zap.Logger) http.Handler {
 			_, _ = io.WriteString(w, "connected")
 		}
 
+		title := r.FormValue("title")
+		desc := r.FormValue("desc")
+		userId, _ := strconv.Atoi(r.FormValue("user_id"))
+		begin, err := time.Parse(time.RFC822, r.FormValue("begin"))
+		if err != nil {
+			_, _ = io.WriteString(w, r.FormValue("begin")+"\n")
+			_, _ = io.WriteString(w, err.Error())
+			return
+		}
+		end, err := time.Parse(time.RFC822, r.FormValue("end"))
+		if err != nil {
+			_, _ = io.WriteString(w, r.FormValue("end")+"\n")
+			_, _ = io.WriteString(w, err.Error())
+			return
+		}
+
 		event := storage.Event{
-			Title:  "foo",
-			Desc:   "foo desc",
-			UserID: 2,
-			Begin:  time.Now().Add(1 * time.Hour),
-			End:    time.Now().Add(2 * time.Hour),
+			Title:  title,
+			Desc:   desc,
+			UserID: int64(userId),
+			Begin:  begin,
+			End:    end,
 		}
 
 		err = st.CreateEvent(context.Background(), event)
 		if err != nil {
 			_, _ = io.WriteString(w, err.Error())
 			return
+		}
+		_, _ = io.WriteString(w, "success")
+	})
+
+	mux.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
+		st := sqlStorage.New(config.SQLStorage{
+			DSN:          "postgres://calendar:calendar@postgres:5432/calendar?sslmode=disable",
+			MaxOpenConns: 2,
+			MaxIdleConns: 2,
+		})
+		err := st.Connect(context.Background())
+		if err != nil {
+			_, _ = io.WriteString(w, err.Error())
+			return
+		} else {
+			_, _ = io.WriteString(w, "connected")
+		}
+
+		title := r.FormValue("title")
+		desc := r.FormValue("desc")
+		begin, err := time.Parse(time.RFC822, r.FormValue("begin"))
+		if err != nil {
+			_, _ = io.WriteString(w, r.FormValue("begin")+"\n")
+			_, _ = io.WriteString(w, err.Error())
+			return
+		}
+		end, err := time.Parse(time.RFC822, r.FormValue("end"))
+		if err != nil {
+			_, _ = io.WriteString(w, r.FormValue("end")+"\n")
+			_, _ = io.WriteString(w, err.Error())
+			return
+		}
+
+		id, _ := strconv.Atoi(r.FormValue("id"))
+
+		event := storage.Event{
+			ID:    int64(id),
+			Title: title,
+			Desc:  desc,
+			Begin: begin,
+			End:   end,
+		}
+
+		err = st.UpdateEvent(context.Background(), event)
+		if err != nil {
+			_, _ = io.WriteString(w, err.Error())
+			return
+		}
+		_, _ = io.WriteString(w, "success")
+	})
+
+	mux.HandleFunc("/delete", func(w http.ResponseWriter, r *http.Request) {
+		st := sqlStorage.New(config.SQLStorage{
+			DSN:          "postgres://calendar:calendar@postgres:5432/calendar?sslmode=disable",
+			MaxOpenConns: 2,
+			MaxIdleConns: 2,
+		})
+		err := st.Connect(context.Background())
+		if err != nil {
+			_, _ = io.WriteString(w, err.Error())
+			return
+		} else {
+			_, _ = io.WriteString(w, "connected")
+		}
+
+		id, _ := strconv.Atoi(r.FormValue("id"))
+
+		err = st.DeleteEvent(context.Background(), int64(id))
+		if err != nil {
+			_, _ = io.WriteString(w, err.Error())
+			return
+		}
+
+		_, _ = io.WriteString(w, "success")
+	})
+
+	mux.HandleFunc("/user-events", func(w http.ResponseWriter, r *http.Request) {
+		st := sqlStorage.New(config.SQLStorage{
+			DSN:          "postgres://calendar:calendar@postgres:5432/calendar?sslmode=disable",
+			MaxOpenConns: 2,
+			MaxIdleConns: 2,
+		})
+		err := st.Connect(context.Background())
+		if err != nil {
+			_, _ = io.WriteString(w, err.Error())
+			return
+		} else {
+			_, _ = io.WriteString(w, "connected \n")
+		}
+
+		userId, _ := strconv.Atoi(r.FormValue("user_id"))
+
+		events, err := st.GetAllEventsOfUser(context.Background(), int64(userId))
+		if err != nil {
+			_, _ = io.WriteString(w, err.Error())
+			return
+		}
+
+		for _, event := range events {
+			fmt.Fprintf(w, "%v \n", event)
+		}
+	})
+
+	mux.HandleFunc("/all", func(w http.ResponseWriter, r *http.Request) {
+		st := sqlStorage.New(config.SQLStorage{
+			DSN:          "postgres://calendar:calendar@postgres:5432/calendar?sslmode=disable",
+			MaxOpenConns: 2,
+			MaxIdleConns: 2,
+		})
+		err := st.Connect(context.Background())
+		if err != nil {
+			_, _ = io.WriteString(w, err.Error())
+			return
+		} else {
+			_, _ = io.WriteString(w, "connected \n")
 		}
 
 		events, err := st.GetAllEvents(context.Background())
@@ -95,7 +232,9 @@ func handler(logger *zap.Logger) http.Handler {
 			return
 		}
 
-		fmt.Println(events)
+		for _, event := range events {
+			fmt.Fprintf(w, "%v \n", event)
+		}
 	})
 
 	return middleware.NewLoggerMiddleware(logger, mux)

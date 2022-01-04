@@ -10,13 +10,14 @@ import (
 	"syscall"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/app"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/logger"
 	httpServer "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/server/http"
 	memoryStorage "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage/memory"
 	sqlStorage "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage/sql"
-	"go.uber.org/zap"
 )
 
 var configFile string
@@ -60,12 +61,12 @@ func main() {
 	}
 }
 
-func getStorage(storageName string) (app.Storage, error) {
-	if storageName == "sql" {
-		return sqlStorage.New(), nil
+func getStorage(config config.Storage) (app.Storage, error) {
+	if config.Name == "sql" {
+		return sqlStorage.New(config.SQL), nil
 	}
-	if storageName == "memory" {
-		return memoryStorage.New(), nil
+	if config.Name == "memory" {
+		return memoryStorage.New(config.Memory), nil
 	}
-	return nil, errors.New("unknown storage: " + storageName)
+	return nil, errors.New("unknown storage: " + config.Name)
 }

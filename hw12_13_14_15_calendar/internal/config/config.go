@@ -24,8 +24,22 @@ type ServerConf struct {
 }
 
 type AppConf struct {
-	Storage string
+	Storage Storage
 }
+
+type Storage struct {
+	Name   string
+	SQL    SQLStorage
+	Memory Memory
+}
+
+type SQLStorage struct {
+	DSN          string
+	MaxIdleConns int
+	MaxOpenConns int
+}
+
+type Memory struct{}
 
 func NewConfig(configFile string) (Config, error) {
 	viper.SetConfigFile(configFile)

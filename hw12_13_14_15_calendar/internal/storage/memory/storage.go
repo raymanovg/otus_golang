@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
 )
 
@@ -21,7 +22,7 @@ type Storage struct {
 }
 
 func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
-	if err := storage.Validate(event); err != nil {
+	if err := storage.ValidateFull(event); err != nil {
 		return err
 	}
 
@@ -70,7 +71,10 @@ func (s *Storage) DeleteEvent(ctx context.Context, eventID int64) error {
 }
 
 func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
-	if err := storage.Validate(event); err != nil {
+	if err := storage.ValidateTitle(event.Title); err != nil {
+		return err
+	}
+	if err := storage.ValidateEventTime(event.Begin, event.End); err != nil {
 		return err
 	}
 
@@ -141,6 +145,6 @@ func (s *Storage) IsEventTimeBusy(savedEvent storage.Event, newEvent storage.Eve
 	return true
 }
 
-func New() *Storage {
+func New(conf config.Memory) *Storage {
 	return &Storage{}
 }
