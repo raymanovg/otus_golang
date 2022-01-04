@@ -3,6 +3,7 @@ package sqlstorage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -48,6 +49,9 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 	if err := storage.ValidateFull(event); err != nil {
 		return fmt.Errorf("invalid event: %w", err)
 	}
+	if busy, _ := s.IsEventTimeBusy(ctx, event); busy {
+		return errors.New("event time is busy")
+	}
 
 	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO events ("title", "description", "begin", "end", "user_id", "created_at") 
@@ -59,7 +63,11 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 		event.UserID,
 		time.Now(),
 	)
-	return fmt.Errorf("failed to create: %w", err)
+	if err != nil {
+		return fmt.Errorf("failed to create: %s", err.Error())
+	}
+
+	return nil
 }
 
 func (s *Storage) DeleteEvent(ctx context.Context, eventID int64) error {
@@ -71,10 +79,16 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 	if err := storage.ValidateTitle(event.Title); err != nil {
 		return fmt.Errorf("invalid event: %w", err)
 	}
-	if err := storage.ValidateEventTime(event.Begin, event.End); err != nil {
-		return fmt.Errorf("invalid event: %w", err)
+	if busy, _ := s.IsEventTimeBusy(ctx, event); busy {
+		return errors.New("event time is busy")
 	}
-	_, err := s.db.ExecContext(ctx,
+
+	idBusy, err := s.IsEventTimeBusy(ctx, event)
+	if idBusy {
+		return fmt.Errorf("event time is busy")
+	}
+
+	_, err = s.db.ExecContext(ctx,
 		`UPDATE events SET "title"=$1, "description"=$2, "begin"=$3, "end"=$4, "updated_at"=$5 WHERE id=$6`,
 		event.Title,
 		event.Desc,
@@ -83,7 +97,10 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 		time.Now(),
 		event.ID,
 	)
-	return fmt.Errorf("failed to update: %w", err)
+	if err != nil {
+		return fmt.Errorf("failed to update: %w", err)
+	}
+	return nil
 }
 
 func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]storage.Event, error) {
@@ -110,6 +127,18 @@ func (s *Storage) GetAllEvents(ctx context.Context) ([]storage.Event, error) {
 	}
 	defer rows.Close()
 	return scanEvents(rows)
+}
+
+func (s *Storage) IsEventTimeBusy(ctx context.Context, event storage.Event) (bool, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT * FROM events WHERE
+      user_id=$1 AND "begin" <= $2 AND "end" >= $3`, event.UserID, event.End, event.Begin)
+
+	var id int64
+	err := row.Scan(&id)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	return true, err
 }
 
 func scanEvents(rows *sql.Rows) ([]storage.Event, error) {
