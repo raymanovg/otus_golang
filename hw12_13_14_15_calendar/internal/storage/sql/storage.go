@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
-
-	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
-	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
 )
 
 type Storage struct {
