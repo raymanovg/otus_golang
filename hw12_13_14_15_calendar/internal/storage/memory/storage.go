@@ -11,13 +11,14 @@ import (
 )
 
 var (
-	ErrEventIDUsed   = errors.New("event with the id is already exist")
 	ErrEventTimeBusy = errors.New("event time is busy")
+	ErrEventNotFound = errors.New("event not found")
 )
 
 type Storage struct {
-	lastEventId int64
-	events      []storage.Event
+	config      config.Memory
+	lastEventID int64
+	events      map[int64]map[int64]storage.Event
 	mu          sync.RWMutex
 }
 
@@ -28,26 +29,29 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, e := range s.events {
+
+	userEvents, ok := s.events[event.UserID]
+	if !ok {
+		s.events[event.UserID] = make(map[int64]storage.Event)
+	}
+
+	event.ID = s.lastEventID + 1
+	event.CreatedAt = time.Now()
+	event.UpdatedAt = time.Time{}
+
+	for _, e := range userEvents {
 		select {
 		case <-ctx.Done():
 			return nil
 		default:
-			if e.ID == event.ID {
-				return ErrEventIDUsed
-			}
 			if !s.IsEventTimeBusy(e, event) {
 				return ErrEventTimeBusy
 			}
 		}
 	}
 
-	event.ID = s.lastEventId + 1
-	event.CreatedAt = time.Now()
-	event.UpdatedAt = time.Now()
-
-	s.events = append(s.events, event)
-	s.lastEventId++
+	s.events[event.UserID][event.ID] = event
+	s.lastEventID = event.ID
 
 	return nil
 }
@@ -56,18 +60,18 @@ func (s *Storage) DeleteEvent(ctx context.Context, eventID int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for i, event := range s.events {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			if eventID == event.ID {
-				s.events = append(s.events[:i], s.events[i+1:]...)
+	for _, userEvents := range s.events {
+		if _, ok := userEvents[eventID]; ok {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				delete(userEvents, eventID)
 				return nil
 			}
 		}
 	}
-	return errors.New("not found")
+	return ErrEventNotFound
 }
 
 func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
@@ -81,70 +85,83 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for i, e := range s.events {
+	userEvents, ok := s.events[event.UserID]
+	if !ok {
+		return ErrEventNotFound
+	}
+	savedEvent, ok := userEvents[event.ID]
+	if !ok {
+		return ErrEventNotFound
+	}
+
+	for _, e := range userEvents {
 		select {
 		case <-ctx.Done():
 			return nil
 		default:
-			if event.ID != e.ID {
-				continue
-			}
-			if !s.IsEventTimeBusy(e, event) {
+			if e.ID != event.ID && !s.IsEventTimeBusy(e, event) {
 				return ErrEventTimeBusy
 			}
-
-			s.events[i].Title = event.Title
-			s.events[i].Desc = event.Desc
-			s.events[i].Begin = event.Begin
-			s.events[i].End = event.End
-			s.events[i].UpdatedAt = time.Now()
-			return nil
 		}
 	}
-	return errors.New("not found")
+
+	savedEvent.Title = event.Title
+	savedEvent.Desc = event.Desc
+	savedEvent.Begin = event.Begin
+	savedEvent.End = event.End
+	savedEvent.UpdatedAt = time.Now()
+
+	s.events[event.UserID][event.ID] = savedEvent
+
+	return nil
 }
 
 func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]storage.Event, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	var events []storage.Event
-	for _, e := range s.events {
+	userEvents, ok := s.events[userID]
+	if !ok {
+		return events, nil
+	}
+	for _, e := range userEvents {
 		select {
 		case <-ctx.Done():
 			return nil, nil
 		default:
-			if userID == e.UserID {
-				events = append(events, e)
-			}
+			events = append(events, e)
 		}
 	}
 	return events, nil
 }
 
-func (s *Storage) GetAllEvents(ctx context.Context) ([]storage.Event, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	select {
-	case <-ctx.Done():
-		return nil, nil
-	default:
-		return s.events, nil
+func (s *Storage) GetEvent(ctx context.Context, eventID int64) (storage.Event, error) {
+	for _, userEvents := range s.events {
+		select {
+		case <-ctx.Done():
+			return storage.Event{}, nil
+		default:
+			if event, ok := userEvents[eventID]; ok {
+				return event, nil
+			}
+		}
 	}
+	return storage.Event{}, ErrEventNotFound
 }
 
 func (s *Storage) IsEventTimeBusy(savedEvent storage.Event, newEvent storage.Event) bool {
-	begin := newEvent.Begin
-	end := newEvent.End
-
-	if savedEvent.UserID != newEvent.UserID || end.Before(savedEvent.Begin) {
+	if savedEvent.UserID != newEvent.UserID || newEvent.End.Before(savedEvent.Begin) {
 		return true
 	}
-	if !begin.After(savedEvent.End) {
+	if !newEvent.Begin.After(savedEvent.End) {
 		return false
 	}
 	return true
 }
 
 func New(conf config.Memory) *Storage {
-	return &Storage{}
+	return &Storage{
+		config: conf,
+		events: make(map[int64]map[int64]storage.Event),
+	}
 }

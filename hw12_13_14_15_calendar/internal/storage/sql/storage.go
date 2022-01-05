@@ -112,18 +112,6 @@ func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]stora
 	return scanEvents(rows)
 }
 
-func (s *Storage) GetAllEvents(ctx context.Context) ([]storage.Event, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT 
-       	"id", "title", "description", "begin", "end", "user_id", "created_at", "updated_at"
-		FROM events`,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrive all events: %w", err)
-	}
-	defer rows.Close()
-	return scanEvents(rows)
-}
-
 func (s *Storage) IsEventTimeBusy(ctx context.Context, event storage.Event) (bool, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT * FROM "events" WHERE
       "user_id" = $1 AND "begin" <= $2 AND "end" >= $3`, event.UserID, event.End, event.Begin)

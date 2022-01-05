@@ -37,9 +37,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger, err := logger.NewZapLogger(conf.Logger)
-	calendar := app.New(logger, storage)
-	server := httpServer.NewServer(conf.Server, logger, calendar)
+	log, err := logger.NewZapLogger(conf.Logger)
+	calendar := app.New(log, storage)
+	server := httpServer.NewServer(conf.Server, log, calendar)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
@@ -50,12 +50,12 @@ func main() {
 		defer cancel()
 
 		if err := server.Stop(ctx); err != nil {
-			logger.Error("failed to stop http server: " + err.Error())
+			log.Error("failed to stop http server: " + err.Error())
 		}
 	}()
 
 	if err := server.Start(ctx); err != nil {
-		logger.Error("failed to start http server: ", err.Error())
+		log.Error("failed to start http server: ", err.Error())
 	}
 }
 

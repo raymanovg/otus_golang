@@ -26,7 +26,6 @@ type Application interface {
 	CreateEvent(ctx context.Context, event app.Event) error
 	DeleteEvent(ctx context.Context, eventID int64) error
 	UpdateEvent(ctx context.Context, event app.Event) error
-	GetAllEvents(ctx context.Context) ([]app.Event, error)
 	GetAllEventsOfUser(ctx context.Context, userID int64) ([]app.Event, error)
 }
 
@@ -212,30 +211,6 @@ func handler(logger Logger) http.Handler {
 			return
 		}
 
-		for _, event := range events {
-			fmt.Fprintf(w, "%v \n", event)
-		}
-	})
-
-	mux.HandleFunc("/all", func(w http.ResponseWriter, r *http.Request) {
-		st := sqlStorage.New(config.SQLStorage{
-			DSN:          "postgres://calendar:calendar@postgres:5432/calendar?sslmode=disable",
-			MaxOpenConns: 2,
-			MaxIdleConns: 2,
-		})
-		err := st.Connect(context.Background())
-		if err != nil {
-			_, _ = io.WriteString(w, err.Error())
-			return
-		} else {
-			_, _ = io.WriteString(w, "connected \n")
-		}
-
-		events, err := st.GetAllEvents(context.Background())
-		if err != nil {
-			_, _ = io.WriteString(w, err.Error())
-			return
-		}
 		for _, event := range events {
 			fmt.Fprintf(w, "%v \n", event)
 		}

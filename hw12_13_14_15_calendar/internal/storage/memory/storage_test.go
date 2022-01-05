@@ -148,25 +148,99 @@ func TestCreateEvent(t *testing.T) {
 	})
 }
 
-func TestGetAllEvents(t *testing.T) {
+func TestGetAllEventsOfUser(t *testing.T) {
 	st := New(config.Memory{})
 	total := 100
+
+	count := make(map[int]int)
 	for i := 1; i <= total; i++ {
+		userID := (i % 5) + 1
 		err := st.CreateEvent(context.Background(), storage.Event{
-			Title:  "event title",
-			Desc:   "event desc",
+			Title:  "event " + strconv.Itoa(i),
+			Desc:   "event desc of " + strconv.Itoa(i),
 			Begin:  time.Now(),
-			End:    time.Now().Add(1 * time.Hour),
-			UserID: int64(i),
+			End:    time.Now().Add(time.Nanosecond),
+			UserID: int64(userID),
 		})
+		count[userID]++
 		require.NoError(t, err)
 	}
 
-	events, err := st.GetAllEvents(context.Background())
+	for userID, c := range count {
+		events, err := st.GetAllEventsOfUser(context.Background(), int64(userID))
+		require.NoError(t, err)
+		require.Len(t, events, c)
+	}
+}
+
+func TestDeleteEvent(t *testing.T) {
+	st := New(config.Memory{})
+	require.ErrorIs(t, st.DeleteEvent(context.Background(), 1), ErrEventNotFound)
+	err := st.CreateEvent(context.Background(), storage.Event{
+		Title:  "event 1",
+		Desc:   "event desc of 1",
+		Begin:  time.Now(),
+		End:    time.Now().Add(time.Hour),
+		UserID: 1,
+	})
 	require.NoError(t, err)
-	require.Len(t, events, total)
-	require.Equal(t, int64(1), events[0].ID, "first event id must be 1")
-	require.Equal(t, int64(total), events[len(events)-1].ID, "last event id must be "+strconv.Itoa(total))
-	require.Equal(t, int64(1), events[0].UserID, "first event user id must be 1")
-	require.Equal(t, int64(total), events[len(events)-1].UserID, "last event user id must be "+strconv.Itoa(total))
+	require.NoError(t, st.DeleteEvent(context.Background(), 1))
+	require.ErrorIs(t, st.DeleteEvent(context.Background(), 1), ErrEventNotFound)
+}
+
+func TestUpdateEvent(t *testing.T) {
+	st := New(config.Memory{})
+	err := st.CreateEvent(context.Background(), storage.Event{
+		Title:  "event 1",
+		Desc:   "event desc of 1",
+		Begin:  time.Now(),
+		End:    time.Now().Add(time.Hour),
+		UserID: 1,
+	})
+	require.NoError(t, err)
+	err = st.CreateEvent(context.Background(), storage.Event{
+		Title:  "event 2",
+		Desc:   "event desc of 2",
+		Begin:  time.Now().Add(time.Hour),
+		End:    time.Now().Add(2 * time.Hour),
+		UserID: 1,
+	})
+	require.NoError(t, err)
+
+	event, err := st.GetEvent(context.Background(), 2)
+	require.NoError(t, err)
+	require.Equal(t, true, event.UpdatedAt.IsZero())
+
+	eventTwoCreatedAt := event.CreatedAt
+	eventTwoBegin := time.Now().Add(2 * time.Hour)
+	eventTwoEnd := time.Now().Add(3 * time.Hour)
+	err = st.UpdateEvent(context.Background(), storage.Event{
+		ID:     2,
+		Title:  "event 2 updated",
+		Desc:   "event desc of 2 updated",
+		Begin:  eventTwoBegin,
+		End:    eventTwoEnd,
+		UserID: 1,
+	})
+	require.NoError(t, err)
+
+	event, err = st.GetEvent(context.Background(), 2)
+	require.NoError(t, err)
+	require.Equal(t, eventTwoCreatedAt, event.CreatedAt)
+	require.Equal(t, false, event.UpdatedAt.IsZero())
+	require.Equal(t, "event 2 updated", event.Title)
+	require.Equal(t, "event desc of 2 updated", event.Desc)
+	require.Equal(t, eventTwoBegin, event.Begin)
+	require.Equal(t, eventTwoEnd, event.End)
+	require.Equal(t, int64(1), event.UserID)
+
+	err = st.UpdateEvent(context.Background(), storage.Event{
+		ID:     2,
+		Title:  "event 2 updated",
+		Desc:   "event desc of 2 updated",
+		Begin:  time.Now(),
+		End:    time.Now().Add(time.Hour),
+		UserID: 1,
+	})
+	require.ErrorIs(t, err, ErrEventTimeBusy)
 }
