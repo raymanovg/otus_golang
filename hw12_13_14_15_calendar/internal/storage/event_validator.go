@@ -42,8 +42,5 @@ func ValidateFull(event Event) error {
 	if err := ValidateUserID(event.UserID); err != nil {
 		return err
 	}
-	if err := ValidateEventTime(event.Begin, event.End); err != nil {
-		return err
-	}
-	return nil
+	return ValidateEventTime(event.Begin, event.End)
 }
