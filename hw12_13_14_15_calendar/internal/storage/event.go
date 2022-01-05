@@ -3,12 +3,12 @@ package storage
 import "time"
 
 type Event struct {
-	ID        int64
-	Title     string
-	Desc      string
-	Begin     time.Time
-	End       time.Time
-	UserID    int64
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        int64     `db:"id"`
+	UserID    int64     `db:"userID"`
+	Title     string    `db:"title"`
+	Desc      string    `db:"desc"`
+	Begin     time.Time `db:"begin"`
+	End       time.Time `db:"end"`
+	CreatedAt time.Time `db:"createdAt"`
+	UpdatedAt time.Time `db:"updatedAt"`
 }

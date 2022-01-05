@@ -2,16 +2,19 @@ package sqlstorage
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
+)
+
+var (
+	ErrEventTimeBusy = errors.New("event time is busy")
+	ErrEventNotFound = errors.New("event not found")
 )
 
 type Storage struct {
@@ -48,21 +51,26 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 	if err := storage.ValidateFull(event); err != nil {
 		return fmt.Errorf("invalid event: %w", err)
 	}
-	if busy, _ := s.IsEventTimeBusy(ctx, event); busy {
-		return errors.New("event time is busy")
+	busy, err := s.checkEventTime(ctx, event)
+	if err != nil {
+		return fmt.Errorf("failed to check event time: %w", err)
+	}
+	if busy {
+		return ErrEventTimeBusy
 	}
 
-	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO events ("title", "description", "begin", "end", "user_id", "created_at") 
-				values ($1, $2, $3, $4, $5, $6)`,
-		event.Title,
-		event.Desc,
-		event.Begin,
-		event.End,
-		event.UserID,
-		time.Now(),
-	)
-	if err != nil {
+	query := `INSERT INTO events ("title", "desc", "begin", "end", "userID") 
+			  VALUES (:title, :desc, :begin, :end, :userID)
+	`
+	args := map[string]interface{}{
+		"title":  event.Title,
+		"desc":   event.Desc,
+		"begin":  event.Begin,
+		"end":    event.End,
+		"userID": event.UserID,
+	}
+
+	if _, err = s.db.NamedExecContext(ctx, query, args); err != nil {
 		return fmt.Errorf("failed to create: %w", err)
 	}
 
@@ -70,7 +78,13 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 }
 
 func (s *Storage) DeleteEvent(ctx context.Context, eventID int64) error {
-	_, err := s.db.ExecContext(ctx, "DELETE FROM events WHERE id=$1", eventID)
+	query := `DELETE FROM events WHERE id = :id`
+	args := map[string]interface{}{"id": eventID}
+	_, err := s.db.NamedExecContext(ctx, query, args)
+	if err != nil {
+		return fmt.Errorf("failed to delete: %w", err)
+	}
+
 	return err
 }
 
@@ -78,75 +92,72 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 	if err := storage.ValidateTitle(event.Title); err != nil {
 		return fmt.Errorf("invalid event: %w", err)
 	}
-	if busy, _ := s.IsEventTimeBusy(ctx, event); busy {
-		return errors.New("event time is busy")
+	if err := storage.ValidateEventTime(event.Begin, event.End); err != nil {
+		return err
+	}
+	if busy, _ := s.checkEventTime(ctx, event); busy {
+		return ErrEventTimeBusy
 	}
 
-	_, err := s.db.ExecContext(ctx,
-		`UPDATE events SET "title"=$1, "description"=$2, "begin"=$3, "end"=$4, "updated_at"=$5 WHERE id=$6`,
-		event.Title,
-		event.Desc,
-		event.Begin,
-		event.End,
-		time.Now(),
-		event.ID,
-	)
+	query := `UPDATE events SET "title" = :title, "desc" = :desc, "begin" = :begin, "end" = :end WHERE id = :id`
+	args := map[string]interface{}{
+		"title": event.Title,
+		"desc":  event.Desc,
+		"begin": event.Begin,
+		"end":   event.End,
+		"id":    event.ID,
+	}
+
+	res, err := s.db.NamedExecContext(ctx, query, args)
 	if err != nil {
 		return fmt.Errorf("failed to update: %w", err)
 	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to update: %w", err)
+	}
+	if affected == 0 {
+		return ErrEventNotFound
+	}
+
 	return nil
 }
 
 func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]storage.Event, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT "id", "title", "description", "begin", "end", "user_id", "created_at", "updated_at"
-		FROM events WHERE "user_id" = $1`,
-		userID,
-	)
+	query := `SELECT * FROM events WHERE "userID" = :userID`
+	args := map[string]interface{}{"userID": userID}
+
+	rows, err := s.db.NamedQueryContext(ctx, query, args)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve events of user: %w", err)
+		return nil, fmt.Errorf("failed to retrieve events of user %d: %w", userID, err)
 	}
 	defer rows.Close()
 
 	return scanEvents(rows)
 }
 
-func (s *Storage) IsEventTimeBusy(ctx context.Context, event storage.Event) (bool, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT * FROM "events" WHERE
-      "user_id" = $1 AND "begin" <= $2 AND "end" >= $3`, event.UserID, event.End, event.Begin)
-
-	var id int64
-	err := row.Scan(&id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
+func (s *Storage) checkEventTime(ctx context.Context, event storage.Event) (bool, error) {
+	query := `SELECT "id" FROM events WHERE "userID" = :userID AND "begin" <= :end AND "end" >= :begin LIMIT 1`
+	args := map[string]interface{}{
+		"userID": event.UserID,
+		"end":    event.End,
+		"begin":  event.Begin,
 	}
-	return true, err
+
+	rows, err := s.db.NamedQueryContext(ctx, query, args)
+	if err != nil {
+		return true, err
+	}
+
+	return rows.Next(), nil
 }
 
-func scanEvents(rows *sql.Rows) ([]storage.Event, error) {
+func scanEvents(rows *sqlx.Rows) ([]storage.Event, error) {
 	var events []storage.Event
 	for rows.Next() {
 		var event storage.Event
-		var updatedAt sql.NullTime
-		var createdAt sql.NullTime
-
-		if err := rows.Scan(
-			&event.ID,
-			&event.Title,
-			&event.Desc,
-			&event.Begin,
-			&event.End,
-			&event.UserID,
-			&createdAt,
-			&updatedAt,
-		); err != nil {
+		if err := rows.StructScan(&event); err != nil {
 			return nil, fmt.Errorf("cannot scan events: %w", err)
-		}
-		if createdAt.Valid {
-			event.CreatedAt = createdAt.Time
-		}
-		if updatedAt.Valid {
-			event.UpdatedAt = updatedAt.Time
 		}
 		events = append(events, event)
 	}

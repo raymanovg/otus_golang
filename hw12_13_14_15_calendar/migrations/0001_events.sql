@@ -3,12 +3,12 @@
 CREATE TABLE "events" (
     "id" BIGSERIAL NOT NULL PRIMARY KEY,
     "title" TEXT NOT NULL,
-    "description" TEXT,
+    "desc" TEXT,
     "begin" TIMESTAMP NOT NULL,
     "end" TIMESTAMP NOT NULL,
-    "user_id" INT NOT NULL,
-    "created_at" TIMESTAMP NOT NULL DEFAULT NOW(),
-    "updated_at" TIMESTAMP
+    "userID" INT NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- +goose Down
