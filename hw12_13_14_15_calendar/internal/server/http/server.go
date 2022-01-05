@@ -81,8 +81,6 @@ func handler(logger Logger) http.Handler {
 		if err != nil {
 			_, _ = io.WriteString(w, err.Error())
 			return
-		} else {
-			_, _ = io.WriteString(w, "connected \n")
 		}
 
 		title := r.FormValue("title")
@@ -127,8 +125,6 @@ func handler(logger Logger) http.Handler {
 		if err != nil {
 			_, _ = io.WriteString(w, err.Error())
 			return
-		} else {
-			_, _ = io.WriteString(w, "connected \n")
 		}
 
 		title := r.FormValue("title")
@@ -161,7 +157,6 @@ func handler(logger Logger) http.Handler {
 			_, _ = io.WriteString(w, err.Error())
 			return
 		}
-		_, _ = io.WriteString(w, "success \n")
 	})
 
 	mux.HandleFunc("/delete", func(w http.ResponseWriter, r *http.Request) {
@@ -174,8 +169,6 @@ func handler(logger Logger) http.Handler {
 		if err != nil {
 			_, _ = io.WriteString(w, err.Error())
 			return
-		} else {
-			_, _ = io.WriteString(w, "connected \n")
 		}
 
 		id, _ := strconv.Atoi(r.FormValue("id"))
@@ -185,8 +178,6 @@ func handler(logger Logger) http.Handler {
 			_, _ = io.WriteString(w, err.Error())
 			return
 		}
-
-		_, _ = io.WriteString(w, "success \n")
 	})
 
 	mux.HandleFunc("/user-events", func(w http.ResponseWriter, r *http.Request) {
@@ -199,8 +190,6 @@ func handler(logger Logger) http.Handler {
 		if err != nil {
 			_, _ = io.WriteString(w, err.Error())
 			return
-		} else {
-			_, _ = io.WriteString(w, "connected \n")
 		}
 
 		userID, _ := strconv.Atoi(r.FormValue("user_id"))
