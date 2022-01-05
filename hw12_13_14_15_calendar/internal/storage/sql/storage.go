@@ -7,12 +7,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
-	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
-
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
 )
 
 type Storage struct {
@@ -118,7 +117,7 @@ func (s *Storage) IsEventTimeBusy(ctx context.Context, event storage.Event) (boo
 
 	var id int64
 	err := row.Scan(&id)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	return true, err
