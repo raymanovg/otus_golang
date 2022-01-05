@@ -87,7 +87,7 @@ func handler(logger Logger) http.Handler {
 
 		title := r.FormValue("title")
 		desc := r.FormValue("desc")
-		userId, _ := strconv.Atoi(r.FormValue("user_id"))
+		userID, _ := strconv.Atoi(r.FormValue("user_id"))
 		begin, err := time.Parse(time.RFC822, r.FormValue("begin"))
 		if err != nil {
 			_, _ = io.WriteString(w, r.FormValue("begin")+"\n")
@@ -104,7 +104,7 @@ func handler(logger Logger) http.Handler {
 		event := storage.Event{
 			Title:  title,
 			Desc:   desc,
-			UserID: int64(userId),
+			UserID: int64(userID),
 			Begin:  begin,
 			End:    end,
 		}
@@ -203,9 +203,9 @@ func handler(logger Logger) http.Handler {
 			_, _ = io.WriteString(w, "connected \n")
 		}
 
-		userId, _ := strconv.Atoi(r.FormValue("user_id"))
+		userID, _ := strconv.Atoi(r.FormValue("user_id"))
 
-		events, err := st.GetAllEventsOfUser(context.Background(), int64(userId))
+		events, err := st.GetAllEventsOfUser(context.Background(), int64(userID))
 		if err != nil {
 			_, _ = io.WriteString(w, err.Error())
 			return
