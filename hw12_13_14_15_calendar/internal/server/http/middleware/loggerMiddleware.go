@@ -20,10 +20,10 @@ type LoggerMiddleware struct {
 }
 
 func (l *LoggerMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	now := time.Now()
+	start := time.Now()
 	l.next.ServeHTTP(w, r)
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-	latency := time.Now().Sub(now)
+	latency := time.Since(start)
 
 	l.logger.Debug(fmt.Sprintf(
 		"ip: %s, method: %s, path: %s, proto: %s, latency: %d, user-agent: %s",

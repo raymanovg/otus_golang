@@ -64,7 +64,7 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 		time.Now(),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create: %s", err.Error())
+		return fmt.Errorf("failed to create: %w", err)
 	}
 
 	return nil

@@ -36,8 +36,12 @@ func main() {
 		fmt.Printf("failed to get storage: %s\n", err)
 		os.Exit(1)
 	}
-
 	log, err := logger.NewZapLogger(conf.Logger)
+	if err != nil {
+		fmt.Printf("failed to get logger: %s\n", err)
+		os.Exit(1)
+	}
+
 	calendar := app.New(log, storage)
 	server := httpServer.NewServer(conf.Server, log, calendar)
 
