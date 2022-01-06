@@ -28,18 +28,8 @@ func ValidateTitle(eventTitle string) error {
 	return nil
 }
 
-func ValidateUserID(eventUserID int64) error {
-	if eventUserID == 0 {
-		return ErrInvalidEventUserID
-	}
-	return nil
-}
-
 func ValidateFull(event Event) error {
 	if err := ValidateTitle(event.Title); err != nil {
-		return err
-	}
-	if err := ValidateUserID(event.UserID); err != nil {
 		return err
 	}
 	return ValidateEventTime(event.Begin, event.End)

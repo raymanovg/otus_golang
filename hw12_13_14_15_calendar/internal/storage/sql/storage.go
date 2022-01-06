@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -59,10 +60,11 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 		return ErrEventTimeBusy
 	}
 
-	query := `INSERT INTO events ("title", "desc", "begin", "end", "userID") 
-			  VALUES (:title, :desc, :begin, :end, :userID)
+	query := `INSERT INTO events ("id", "title", "desc", "begin", "end", "userID") 
+			  VALUES (:id, :title, :desc, :begin, :end, :userID)
 	`
 	args := map[string]interface{}{
+		"id":     uuid.New().String(),
 		"title":  event.Title,
 		"desc":   event.Desc,
 		"begin":  event.Begin,
@@ -77,7 +79,7 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 	return nil
 }
 
-func (s *Storage) DeleteEvent(ctx context.Context, eventID int64) error {
+func (s *Storage) DeleteEvent(ctx context.Context, eventID uuid.UUID) error {
 	query := `DELETE FROM events WHERE id = :id`
 	args := map[string]interface{}{"id": eventID}
 	_, err := s.db.NamedExecContext(ctx, query, args)
@@ -123,7 +125,7 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 	return nil
 }
 
-func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]storage.Event, error) {
+func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID uuid.UUID) ([]storage.Event, error) {
 	query := `SELECT * FROM events WHERE "userID" = :userID`
 	args := map[string]interface{}{"userID": userID}
 
@@ -148,6 +150,8 @@ func (s *Storage) checkEventTime(ctx context.Context, event storage.Event) (bool
 	if err != nil {
 		return true, err
 	}
+
+	defer rows.Close()
 
 	return rows.Next(), nil
 }

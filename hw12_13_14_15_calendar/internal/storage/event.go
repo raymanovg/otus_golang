@@ -1,10 +1,14 @@
 package storage
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Event struct {
-	ID        int64     `db:"id"`
-	UserID    int64     `db:"userID"`
+	ID        uuid.UUID `db:"id"`
+	UserID    uuid.UUID `db:"userID"`
 	Title     string    `db:"title"`
 	Desc      string    `db:"desc"`
 	Begin     time.Time `db:"begin"`

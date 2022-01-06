@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
 )
 
@@ -20,9 +21,9 @@ type App struct {
 
 type Storage interface {
 	CreateEvent(ctx context.Context, event storage.Event) error
-	DeleteEvent(ctx context.Context, eventID int64) error
+	DeleteEvent(ctx context.Context, eventID uuid.UUID) error
 	UpdateEvent(ctx context.Context, event storage.Event) error
-	GetAllEventsOfUser(ctx context.Context, userID int64) ([]storage.Event, error)
+	GetAllEventsOfUser(ctx context.Context, userID uuid.UUID) ([]storage.Event, error)
 }
 
 func New(logger Logger, storage Storage) *App {
@@ -43,7 +44,7 @@ func (a *App) CreateEvent(ctx context.Context, event Event) error {
 	})
 }
 
-func (a *App) DeleteEvent(ctx context.Context, eventID int64) error {
+func (a *App) DeleteEvent(ctx context.Context, eventID uuid.UUID) error {
 	return a.storage.DeleteEvent(ctx, eventID)
 }
 
@@ -57,7 +58,7 @@ func (a *App) UpdateEvent(ctx context.Context, event Event) error {
 	})
 }
 
-func (a *App) GetAllEventsOfUser(ctx context.Context, userID int64) ([]Event, error) {
+func (a *App) GetAllEventsOfUser(ctx context.Context, userID uuid.UUID) ([]Event, error) {
 	eventsInStorage, err := a.storage.GetAllEventsOfUser(ctx, userID)
 	if err != nil {
 		return nil, err

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage"
 )
@@ -16,10 +17,9 @@ var (
 )
 
 type Storage struct {
-	config      config.Memory
-	lastEventID int64
-	events      map[int64]map[int64]storage.Event
-	mu          sync.RWMutex
+	config config.Memory
+	events map[uuid.UUID]map[uuid.UUID]storage.Event
+	mu     sync.RWMutex
 }
 
 func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
@@ -32,12 +32,12 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 
 	userEvents, ok := s.events[event.UserID]
 	if !ok {
-		s.events[event.UserID] = make(map[int64]storage.Event)
+		s.events[event.UserID] = make(map[uuid.UUID]storage.Event)
 	}
 
-	event.ID = s.lastEventID + 1
+	event.ID = uuid.New()
 	event.CreatedAt = time.Now()
-	event.UpdatedAt = time.Time{}
+	event.UpdatedAt = time.Now()
 
 	for _, e := range userEvents {
 		select {
@@ -51,12 +51,11 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 	}
 
 	s.events[event.UserID][event.ID] = event
-	s.lastEventID = event.ID
 
 	return nil
 }
 
-func (s *Storage) DeleteEvent(ctx context.Context, eventID int64) error {
+func (s *Storage) DeleteEvent(ctx context.Context, eventID uuid.UUID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -116,7 +115,7 @@ func (s *Storage) UpdateEvent(ctx context.Context, event storage.Event) error {
 	return nil
 }
 
-func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]storage.Event, error) {
+func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID uuid.UUID) ([]storage.Event, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	var events []storage.Event
@@ -135,7 +134,7 @@ func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID int64) ([]stora
 	return events, nil
 }
 
-func (s *Storage) GetEvent(ctx context.Context, eventID int64) (storage.Event, error) {
+func (s *Storage) GetEvent(ctx context.Context, eventID uuid.UUID) (storage.Event, error) {
 	for _, userEvents := range s.events {
 		select {
 		case <-ctx.Done():
@@ -162,6 +161,6 @@ func (s *Storage) IsEventTimeBusy(savedEvent storage.Event, newEvent storage.Eve
 func New(conf config.Memory) *Storage {
 	return &Storage{
 		config: conf,
-		events: make(map[int64]map[int64]storage.Event),
+		events: make(map[uuid.UUID]map[uuid.UUID]storage.Event),
 	}
 }

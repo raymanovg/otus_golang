@@ -1,12 +1,16 @@
 package app
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Event struct {
-	ID     int64
+	ID     uuid.UUID
+	UserID uuid.UUID
 	Title  string
 	Desc   string
-	UserID int64
 	Begin  time.Time
 	End    time.Time
 }
