@@ -64,7 +64,7 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 			  VALUES (:id, :title, :desc, :begin, :end, :userID)
 	`
 	args := map[string]interface{}{
-		"id":     uuid.New().String(),
+		"id":     event.ID.String(),
 		"title":  event.Title,
 		"desc":   event.Desc,
 		"begin":  event.Begin,
@@ -72,7 +72,7 @@ func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 		"userID": event.UserID,
 	}
 
-	if _, err = s.db.NamedExecContext(ctx, query, args); err != nil {
+	if _, err := s.db.NamedExecContext(ctx, query, args); err != nil {
 		return fmt.Errorf("failed to create: %w", err)
 	}
 
@@ -141,7 +141,7 @@ func (s *Storage) GetAllEventsOfUser(ctx context.Context, userID uuid.UUID) ([]s
 func (s *Storage) checkEventTime(ctx context.Context, event storage.Event) (bool, error) {
 	query := `SELECT "id" FROM events WHERE "userID" = :userID AND "begin" <= :end AND "end" >= :begin LIMIT 1`
 	args := map[string]interface{}{
-		"userID": event.UserID,
+		"userID": event.UserID.String(),
 		"end":    event.End,
 		"begin":  event.Begin,
 	}

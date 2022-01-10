@@ -8,39 +8,49 @@ import (
 
 var VERSION = "UNKNOWN"
 
-type Config struct {
-	Logger LoggerConf
-	Server ServerConf
-	App    AppConf
-}
+type (
+	Server struct {
+		Http HttpServerConf
+		Grpc GrpcServerConf
+	}
+	Config struct {
+		Logger LoggerConf
+		Server Server
+		App    AppConf
+	}
 
-type LoggerConf struct {
-	Output  []string
-	Level   string
-	DevMode bool
-}
+	LoggerConf struct {
+		Output  []string
+		Level   string
+		DevMode bool
+	}
 
-type ServerConf struct {
-	Addr string
-}
+	HttpServerConf struct {
+		Addr string
+	}
 
-type AppConf struct {
-	Storage Storage
-}
+	GrpcServerConf struct {
+		Addr string
+	}
 
-type Storage struct {
-	Name   string
-	SQL    SQLStorage
-	Memory Memory
-}
+	AppConf struct {
+		Storage Storage
+	}
 
-type SQLStorage struct {
-	DSN          string
-	MaxIdleConns int
-	MaxOpenConns int
-}
+	Storage struct {
+		Name   string
+		SQL    SQLStorage
+		Memory Memory
+	}
 
-type Memory struct{}
+	SQLStorage struct {
+		DSN          string
+		MaxIdleConns int
+		MaxOpenConns int
+	}
+
+	Memory struct{}
+)
 
 func NewConfig(configFile string) (Config, error) {
 	viper.SetConfigFile(configFile)

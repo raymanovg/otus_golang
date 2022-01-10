@@ -2,7 +2,7 @@ app:
   storage:
     name: sql
     sql:
-      dsn: "postgres://calendar:calendar@postgres:5432/calendar?sslmode=disable"
+      dsn: "postgres://calendar:calendar@localhost:5444/calendar?sslmode=disable"
       maxIdleConns: 2
       maxOpenConns: 2
     memory:
@@ -11,4 +11,7 @@ logger:
   level: debug
   devMode: true
 server:
-  addr: ":8080"
+  http:
+    addr: ":8080"
+  grpc:
+    addr: ":8081"

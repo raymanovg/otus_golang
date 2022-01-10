@@ -5,6 +5,16 @@ VERSION?=$(shell git log --date=short --pretty=format:'%ad-%h' -n 1 | sed -E 's/
 
 LDFLAGS := -X github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config.VERSION=$(VERSION)
 
+generate:
+	rm -rf internal/server/grpc/pb
+	mkdir -p internal/server/grpc/pb
+
+	protoc \
+		--proto_path=api/ \
+		--go_out=internal/server/grpc/pb \
+		--go-grpc_out=internal/server/grpc/pb \
+		api/*.proto
+
 up:
 	docker-compose -f deployments/docker-compose.yaml up -d calendar
 

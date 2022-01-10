@@ -1,7 +1,27 @@
 syntax = "proto3";
 
 package event;
+option go_package = "./;pb";
 
-message Event {
-    // TODO
+import "google/protobuf/timestamp.proto";
+
+service Calendar {
+  rpc CreateEvent (CreateEventRequest) returns (CreateEventResponse) {}
+}
+
+message CreateEventRequest {
+  message Event {
+    string userID = 2;
+    string title = 3;
+    string desc = 4;
+    google.protobuf.Timestamp begin = 5;
+    google.protobuf.Timestamp end = 6;
+  }
+
+  Event event = 1;
+}
+
+message CreateEventResponse {
+  bool ok = 1;
+  string event_id = 2;
 }
