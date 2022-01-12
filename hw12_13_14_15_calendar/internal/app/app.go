@@ -20,6 +20,8 @@ type App struct {
 }
 
 type Storage interface {
+	Connect(ctx context.Context) error
+	Close() error
 	CreateEvent(ctx context.Context, event storage.Event) error
 	DeleteEvent(ctx context.Context, eventID uuid.UUID) error
 	UpdateEvent(ctx context.Context, event storage.Event) error

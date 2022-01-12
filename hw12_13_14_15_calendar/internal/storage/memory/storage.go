@@ -22,6 +22,14 @@ type Storage struct {
 	mu     sync.RWMutex
 }
 
+func (s *Storage) Connect(ctx context.Context) error {
+	return nil
+}
+
+func (s *Storage) Close() error {
+	return nil
+}
+
 func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
 	if err := storage.ValidateFull(event); err != nil {
 		return err
