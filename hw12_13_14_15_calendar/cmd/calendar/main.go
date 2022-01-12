@@ -31,16 +31,24 @@ func main() {
 		fmt.Printf("failed to init conf: %s\n", err)
 		os.Exit(1)
 	}
-	storage, err := getStorage(conf.App.Storage)
-	if err != nil {
-		fmt.Printf("failed to get storage: %s\n", err)
-		os.Exit(1)
-	}
+
 	log, err := logger.NewZapLogger(conf.Logger)
 	if err != nil {
 		fmt.Printf("failed to get logger: %s\n", err)
 		os.Exit(1)
 	}
+
+	storage, err := getStorage(conf.App.Storage)
+	if err != nil {
+		fmt.Printf("failed to get storage: %s\n", err)
+		os.Exit(1)
+	}
+
+	if err = storage.Connect(context.Background()); err != nil {
+		fmt.Printf("failed to connect: %s\n", err)
+		os.Exit(1)
+	}
+	defer storage.Close()
 
 	calendar := app.New(log, storage)
 	server := httpServer.NewServer(conf.Server, log, calendar)
