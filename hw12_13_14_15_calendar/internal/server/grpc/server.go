@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"net"
 
 	"github.com/google/uuid"
@@ -52,7 +53,7 @@ type Service struct {
 }
 
 func (s *Service) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*pb.CreateEventResponse, error) {
-	userID, err := uuid.Parse(req.Event.UserID)
+	userID, err := uuid.Parse(req.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -72,9 +73,63 @@ func (s *Service) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (
 	}
 
 	return &pb.CreateEventResponse{
-		Ok:      true,
-		EventId: event.ID.String(),
+		EventID: event.ID.String(),
 	}, nil
+}
+
+func (s *Service) DeleteEvent(ctx context.Context, req *pb.DeleteEventRequest) (*pb.DeleteEventResponse, error) {
+	eventID, err := uuid.Parse(req.EventID)
+	if err != nil {
+		return nil, err
+	}
+	if err = s.app.DeleteEvent(ctx, eventID); err != nil {
+		return nil, err
+	}
+	return &pb.DeleteEventResponse{}, nil
+}
+
+func (s *Service) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*pb.UpdateEventResponse, error) {
+	eventID, err := uuid.Parse(req.EventID)
+	if err != nil {
+		return nil, err
+	}
+	event := app.Event{
+		ID:    eventID,
+		Title: req.Event.Title,
+		Desc:  req.Event.Desc,
+		Begin: req.Event.Begin.AsTime(),
+		End:   req.Event.End.AsTime(),
+	}
+	if err = s.app.UpdateEvent(ctx, event); err != nil {
+		return nil, err
+	}
+	return &pb.UpdateEventResponse{EventID: req.EventID}, nil
+}
+
+func (s *Service) GetAllEventsOfUser(ctx context.Context, req *pb.GetAllEventsOfUserRequest) (*pb.GetAllEventsOfUserResponse, error) {
+	userID, err := uuid.Parse(req.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	events, err := s.app.GetAllEventsOfUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	respEvents := make([]*pb.FullEvent, 0, len(events))
+	for _, event := range events {
+		respEvents = append(respEvents, &pb.FullEvent{
+			Id:     event.ID.String(),
+			UserID: event.ID.String(),
+			Title:  event.Title,
+			Desc:   event.Desc,
+			Begin:  &timestamppb.Timestamp{Seconds: int64(event.Begin.Second())},
+			End:    &timestamppb.Timestamp{Seconds: int64(event.End.Second())},
+		})
+	}
+
+	return &pb.GetAllEventsOfUserResponse{Event: respEvents}, nil
 }
 
 func NewServer(conf config.GrpcServerConf, log Logger, app Application) Server {

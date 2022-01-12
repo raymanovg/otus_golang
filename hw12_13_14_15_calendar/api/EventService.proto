@@ -6,22 +6,57 @@ option go_package = "./;pb";
 import "google/protobuf/timestamp.proto";
 
 service Calendar {
-  rpc CreateEvent (CreateEventRequest) returns (CreateEventResponse) {}
+  rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse) {}
+  rpc DeleteEvent(DeleteEventRequest) returns (DeleteEventResponse) {}
+  rpc UpdateEvent(UpdateEventRequest) returns (UpdateEventResponse) {}
+  rpc GetAllEventsOfUser(GetAllEventsOfUserRequest) returns (GetAllEventsOfUserResponse) {}
+}
+
+message FullEvent {
+  string id = 1;
+  string userID = 2;
+  string title = 3;
+  string desc = 4;
+  google.protobuf.Timestamp begin = 5;
+  google.protobuf.Timestamp end = 6;
+}
+
+message Event {
+  string title = 3;
+  string desc = 4;
+  google.protobuf.Timestamp begin = 5;
+  google.protobuf.Timestamp end = 6;
 }
 
 message CreateEventRequest {
-  message Event {
-    string userID = 2;
-    string title = 3;
-    string desc = 4;
-    google.protobuf.Timestamp begin = 5;
-    google.protobuf.Timestamp end = 6;
-  }
-
-  Event event = 1;
+  string eventID = 1;
+  string userID = 2;
+  Event event = 3;
 }
 
 message CreateEventResponse {
-  bool ok = 1;
-  string event_id = 2;
+  string eventID = 1;
+}
+
+message DeleteEventRequest {
+  string eventID = 1;
+}
+
+message DeleteEventResponse {}
+
+message UpdateEventRequest {
+  string eventID = 1;
+  Event event = 2;
+}
+
+message UpdateEventResponse {
+  string eventID = 1;
+}
+
+message GetAllEventsOfUserRequest {
+  string userID = 1;
+}
+
+message GetAllEventsOfUserResponse {
+  repeated FullEvent event = 1;
 }
