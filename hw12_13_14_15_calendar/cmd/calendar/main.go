@@ -2,60 +2,81 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/fixme_my_friend/hw12_13_14_15_calendar/internal/app"
-	"github.com/fixme_my_friend/hw12_13_14_15_calendar/internal/logger"
-	internalhttp "github.com/fixme_my_friend/hw12_13_14_15_calendar/internal/server/http"
-	memorystorage "github.com/fixme_my_friend/hw12_13_14_15_calendar/internal/storage/memory"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/app"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/logger"
+	httpServer "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/server/http"
+	memoryStorage "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage/memory"
+	sqlStorage "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage/sql"
 )
 
 var configFile string
 
 func init() {
-	flag.StringVar(&configFile, "config", "/etc/calendar/config.toml", "Path to configuration file")
+	flag.StringVar(&configFile, "config", "config.yaml", "config file")
 }
 
 func main() {
 	flag.Parse()
-
-	if flag.Arg(0) == "version" {
-		printVersion()
-		return
+	conf, err := config.NewConfig(configFile)
+	if err != nil {
+		fmt.Printf("failed to init conf: %s\n", err)
+		os.Exit(1)
 	}
 
-	config := NewConfig()
-	logg := logger.New(config.Logger.Level)
+	log, err := logger.NewZapLogger(conf.Logger)
+	if err != nil {
+		fmt.Printf("failed to get logger: %s\n", err)
+		os.Exit(1)
+	}
 
-	storage := memorystorage.New()
-	calendar := app.New(logg, storage)
+	storage, err := getStorage(conf.App.Storage)
+	if err != nil {
+		fmt.Printf("failed to get storage: %s\n", err)
+		os.Exit(1)
+	}
 
-	server := internalhttp.NewServer(logg, calendar)
+	if err = storage.Connect(context.Background()); err != nil {
+		fmt.Printf("failed to connect: %s\n", err)
+		os.Exit(1)
+	}
+	defer storage.Close()
 
-	ctx, cancel := signal.NotifyContext(context.Background(),
-		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	calendar := app.New(log, storage)
+	server := httpServer.NewServer(conf.Server, log, calendar)
+
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
 	go func() {
 		<-ctx.Done()
-
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
 
 		if err := server.Stop(ctx); err != nil {
-			logg.Error("failed to stop http server: " + err.Error())
+			log.Error("failed to stop http server: " + err.Error())
 		}
 	}()
 
-	logg.Info("calendar is running...")
-
 	if err := server.Start(ctx); err != nil {
-		logg.Error("failed to start http server: " + err.Error())
-		cancel()
-		os.Exit(1) //nolint:gocritic
+		log.Error("failed to start http server: ", err.Error())
 	}
+}
+
+func getStorage(config config.Storage) (app.Storage, error) {
+	if config.Name == "sql" {
+		return sqlStorage.New(config.SQL), nil
+	}
+	if config.Name == "memory" {
+		return memoryStorage.New(config.Memory), nil
+	}
+	return nil, errors.New("unknown storage: " + config.Name)
 }
