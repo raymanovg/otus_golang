@@ -49,6 +49,9 @@ func (s *Storage) Close() error {
 }
 
 func (s *Storage) CreateEvent(ctx context.Context, event storage.Event) error {
+	if s.db == nil {
+		s.Connect(ctx)
+	}
 	if err := storage.ValidateFull(event); err != nil {
 		return fmt.Errorf("invalid event: %w", err)
 	}
