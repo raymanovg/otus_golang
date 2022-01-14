@@ -4,9 +4,15 @@ package event;
 option go_package = "./;pb";
 
 import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
 
 service Calendar {
-  rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse) {}
+  rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse) {
+    option (google.api.http) = {
+      post: "/v1/event/create"
+      body: "*"
+    };
+  }
   rpc DeleteEvent(DeleteEventRequest) returns (DeleteEventResponse) {}
   rpc UpdateEvent(UpdateEventRequest) returns (UpdateEventResponse) {}
   rpc GetAllEventsOfUser(GetAllEventsOfUserRequest) returns (GetAllEventsOfUserResponse) {}

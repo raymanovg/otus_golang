@@ -3,13 +3,18 @@ package internalhttp
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/app"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/proto/pb"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Logger interface {
@@ -27,24 +32,38 @@ type Application interface {
 }
 
 type Server struct {
-	conf       config.ServerConf
+	conf       config.Server
 	log        Logger
-	app        Application
 	httpServer *http.Server
 }
 
-func NewServer(config config.ServerConf, logger Logger, app Application) *Server {
+func NewServer(config config.Server, logger Logger) *Server {
 	return &Server{
 		conf: config,
 		log:  logger,
-		app:  app,
 	}
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	s.httpServer = &http.Server{
-		Addr:    s.conf.Addr,
-		Handler: handler(s.log),
+	conn, err := grpc.DialContext(
+		context.Background(),
+		s.conf.Grpc.Addr,
+		grpc.WithBlock(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatalln("Failed to dial server:", err)
+	}
+
+	gwmux := runtime.NewServeMux()
+	err = pb.RegisterCalendarHandler(context.Background(), gwmux, conn)
+	if err != nil {
+		log.Fatalln("Failed to register gateway:", err)
+	}
+
+	gwServer := &http.Server{
+		Addr:    s.conf.Http.Addr,
+		Handler: gwmux,
 	}
 
 	go func() {
@@ -57,9 +76,9 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 	}()
 
-	s.log.Info(fmt.Sprintf("listening: %s", s.conf.Addr))
+	s.log.Info(fmt.Sprintf("listening: %s", s.conf.Http.Addr))
 
-	return s.httpServer.ListenAndServe()
+	return gwServer.ListenAndServe()
 }
 
 func (s *Server) Stop(ctx context.Context) error {

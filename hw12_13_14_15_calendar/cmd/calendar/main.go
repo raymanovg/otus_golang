@@ -12,7 +12,9 @@ import (
 
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/app"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config"
+	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/handler"
 	"github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/logger"
+	grpcServer "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/server/grpc"
 	httpServer "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/server/http"
 	memoryStorage "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage/memory"
 	sqlStorage "github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/storage/sql"
@@ -42,25 +44,41 @@ func main() {
 		os.Exit(1)
 	}
 
-	calendar := app.New(log, storage)
-	server := httpServer.NewServer(conf.Server, log, calendar)
+	if err := storage.Connect(context.Background()); err != nil {
+		fmt.Printf("failed to connect to storage: %s\n", err)
+		os.Exit(1)
+	}
+	defer storage.Close()
 
+	calendar := app.New(log, storage)
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	defer cancel()
+
+	grpc := grpcServer.NewServer(conf.Server.Grpc, log, handler.NewHandler(calendar, log))
+	gateway := httpServer.NewServer(conf.Server, log)
 
 	go func() {
 		<-ctx.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
 
-		if err := server.Stop(ctx); err != nil {
+		grpc.Stop()
+		if err := gateway.Stop(ctx); err != nil {
 			log.Error("failed to stop http server: " + err.Error())
 		}
 	}()
 
-	if err := server.Start(ctx); err != nil {
+	go func() {
+		err := grpc.Start(ctx)
+		if err != nil {
+			cancel()
+		}
+	}()
+
+	if err := gateway.Start(ctx); err != nil {
 		log.Error("failed to start http server: ", err.Error())
+		cancel()
 	}
+
 }
 
 func getStorage(config config.Storage) (app.Storage, error) {

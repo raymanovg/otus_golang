@@ -1,20 +1,23 @@
 BIN := "./bin/calendar"
 DOCKER_IMG="calendar:develop"
+GOOPENAPIV2_VERSION?=v2@v2.7.2
+GOOGLEAPIS_VERSION?=v1.16.0
 
 VERSION?=$(shell git log --date=short --pretty=format:'%ad-%h' -n 1 | sed -E 's/([0-9]{4})\-([0-9]{2})\-([0-9]{2})/\1.\2.\3/g')
 
 LDFLAGS := -X github.com/raymanovg/otus_golang/hw12_13_14_15_calendar/internal/config.VERSION=$(VERSION)
 
 generate:
-	rm -rf internal/server/grpc/pb
-	mkdir -p internal/server/grpc/pb
-
-	protoc \
-		--proto_path=api/ \
-		--go_out=internal/server/grpc/pb \
-		--go-grpc_out=internal/server/grpc/pb \
-		api/*.proto
-
+	rm -rf proto/pb
+	mkdir -p proto/pb
+	protoc -I. \
+			-I$(GOPATH)/pkg/mod \
+			-I$(GOPATH)/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@$(GOOGLEAPIS_VERSION)/third_party/googleapis \
+			-I$(GOPATH)/pkg/mod/github.com/grpc-ecosystem/grpc-gateway/$(GOOPENAPIV2_VERSION) \
+			--go_out=proto/pb \
+			--go-grpc_out=proto/pb \
+			--grpc-gateway_out=proto/pb \
+			proto/*.proto
 up:
 	docker-compose -f deployments/docker-compose.yaml up -d calendar
 
@@ -53,4 +56,4 @@ install-lint-deps:
 lint: install-lint-deps
 	golangci-lint run ./...
 
-.PHONY: build run build-img run-img version test lint
+.PHONY: up down generate migration-up migration-down build run build-img run-img test install-lint-deps lint
